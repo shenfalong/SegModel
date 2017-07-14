@@ -1,0 +1,307 @@
+syntax = "proto2";
+
+package caffe;
+
+message BlobShape {
+  repeated int64 dim = 1 [packed = true];
+}
+
+message BlobProto {
+  repeated float data = 5 [packed = true];
+  repeated float diff = 6 [packed = true];
+	optional BlobShape shape = 7;   // just for communication between old and new caffe
+
+  optional int32 num = 1 [default = 0];
+  optional int32 channels = 2 [default = 0];
+  optional int32 height = 3 [default = 0];
+  optional int32 width = 4 [default = 0];
+}
+
+
+message Datum {
+  optional int32 channels = 1;
+  optional int32 height = 2;
+  optional int32 width = 3;
+  // the actual image data, in bytes
+  optional bytes data = 4;
+  optional int32 label = 5;
+  // Optionally, the datum could also hold float data.
+  repeated float float_data = 6;
+  optional bool encoded = 7 [default = false];
+}
+
+message FillerParameter {
+  // The filler type.
+  optional string type = 1 [default = "msra"];
+
+  // Normalize the filler variance by fan_in, fan_out, or their average.
+  // Applies to 'xavier' and 'msra' fillers.
+  enum VarianceNorm {
+    FAN_IN = 0;
+    FAN_OUT = 1;
+    AVERAGE = 2;
+  }
+  optional VarianceNorm variance_norm = 2 [default = FAN_IN];
+}
+
+message InnerProductParameter {
+  optional uint32 num_output = 1; 
+  optional bool bias_term = 2 [default = false];  
+  optional FillerParameter weight_filler = 3; 
+}
+
+message ConvolutionParameter {
+  optional uint32 num_output = 1; 
+  optional bool bias_term = 2 [default = false]; 
+  optional uint32 pad = 3 [default = 0];
+  optional uint32 kernel_size = 4; 
+  optional uint32 stride = 5 [default = 1]; 
+  optional uint32 filter_stride = 6 [default = 1]; 
+  optional FillerParameter weight_filler = 7;
+  optional uint32 group = 8 [default = 1];
+  optional string weight_file = 9;
+  optional uint32 multi = 10;
+}
+
+message TransformationParameter {
+ 
+  optional bool mirror = 1 [default = false];
+  optional int32 crop_size = 2 [default = 0];
+  optional int32 augment_size = 3 [default = 0];
+  repeated float mean_value = 4;
+  
+  optional bool resize_img = 5 [default = true];
+  optional bool alter_color = 6 [default = true];
+  optional bool pad_img = 7 [default = false];
+  optional int32 crop_height = 8 [default = 0];
+  optional int32 crop_size = 9 [default = 0];
+}
+
+message DataParameter {
+  enum DB {
+    LMDB = 1;
+  }
+  optional string source = 1;
+  optional string root_folder = 2 [default = ""];
+  
+  optional uint32 batch_size = 3 [default = 1];
+  optional uint32 crop_size = 4 [default = 0];
+  optional uint32 rand_skip = 5 [default = 0];
+  optional DB backend = 6 [default = LMDB];
+  
+  optional bool shuffle = 7 [default = false];
+	optional int32 ignore_label = 8;
+	
+	optional bool random_scale = 9 [default = false];
+  optional bool random_aspect = 10 [default = false];
+	optional bool use_resize = 11 [default = false];
+  optional int32 resolution = 12 [default = 1];
+  optional int32 classes = 13 [default = 21];
+}
+
+
+message ParamSpec {
+  optional float lr_mult = 1;
+  optional float decay_mult = 2;
+}
+message LayerProp {
+  optional Phase phase = 1;
+  optional float loss_weight = 2 [default = 0];
+  optional bool need_backward = 3 [default = true];
+}  
+
+message LayerParameter {
+  optional string name = 1; // the layer name
+  optional string type = 2; // the string to specify the layer type
+  repeated string bottom = 3; // the name of the bottom blobs
+  repeated string top = 4; // the name of the top blobs
+  repeated int32 bottom_flow = 101;
+  repeated int32 top_flow = 102;
+  
+  optional LayerProp include = 5;
+  repeated ParamSpec param = 6;
+	repeated BlobProto blobs = 7;
+ 	
+	
+
+  optional DataParameter data_param = 25;	
+  optional TransformationParameter transform_param = 26;
+  optional ConvolutionParameter convolution_param = 27;
+  optional LossParameter loss_param = 28;
+  optional PoolingParameter pooling_param = 29;
+  optional InnerProductParameter inner_product_param = 30;
+  optional BatchNormParameter batch_norm_param = 31;
+  optional ShortcutParameter shortcut_param = 32;
+  optional AccuracyParameter accuracy_param = 33;
+  optional NormalizeParameter norm_param = 34;
+  optional ContextPoolingParameter context_pooling_param = 35;
+  optional CRFParameter crf_param = 36;
+  optional EltwiseParameter eltwise_param = 37;
+  optional ParseEvaluateParameter parse_evaluate_param = 38;
+  optional DropoutParameter dropout_param = 39;
+  optional InterpParameter interp_param = 40;
+}
+message InterpParameter {
+  optional int32 interp_ratio = 1; // interp ratio
+  optional int32 stride = 2;
+  optional int32 kernel_size = 3;
+  optional int32 num_classes = 4;
+}
+message DropoutParameter {
+  optional float dropout_ratio = 1 [default = 0.5]; // dropout ratio
+}
+
+message ParseEvaluateParameter {
+  optional int32 num_labels = 1;
+  repeated int32 ignore_label = 2;
+}
+message EltwiseParameter {
+  enum EltwiseOp {
+    PROD = 0;
+    SUM = 1;
+    MAX = 2;
+  }
+  optional EltwiseOp operation = 1 [default = SUM]; // element-wise operation
+  repeated float coeff = 2; // blob-wise coefficient for SUM operation
+
+  // Whether to use an asymptotically slower (for >2 inputs) but stabler method
+  // of computing the gradient for the PROD operation. (No effect for SUM op.)
+  optional bool stable_prod_grad = 3 [default = true];
+  
+  repeated bool backward = 4; // blob-wise coefficient for SUM operation
+}
+message CRFParameter {
+	optional int32 max_iter = 1 [default = 1];
+	optional float radius = 2;
+	optional float scale = 3 [default = 0.01];
+	optional float eps = 4 [default = 0.01];
+	optional float alpha = 5 [default = 0.01];
+}
+message ContextPoolingParameter {
+  // Pad, kernel size, and stride are all given as a single value for equal
+  // dimensions in height and width or as Y, X pairs.
+  optional uint32 context_h = 1 [default = 0]; // The pooled output height
+  optional uint32 context_w = 2 [default = 0]; // The pooled output width
+  optional PoolMethod pool = 3;
+  enum PoolMethod {
+    MAX = 0;
+    AVE = 1;
+    STOCHASTIC = 2;
+  }
+  optional PoolMode mode =4;
+  enum PoolMode {
+  	AROUND = 0;
+  	TOP = 1;
+  	BOTTOM = 2;
+  }
+ 
+}
+
+message NormalizeParameter {
+  optional float scale_value = 1 [default = 1];
+  optional float eps = 2 [default = 1e-10];
+}
+
+
+message AccuracyParameter {
+  optional uint32 top_k = 1 [default = 1];
+  optional int32 ignore_label = 2;
+}
+message ShortcutParameter { 
+  optional float scale = 1;
+  optional float dropout_ratio = 2 [default = 0.5];
+  optional uint32 groups = 3 [default = 1];
+}
+
+message BatchNormParameter {
+  optional BNState bn_state = 1 [default = BNTRAIN];
+}
+enum BNState {
+ BNTRAIN = 0;
+ BNCOLLECT = 1;
+ BNTEST = 2;
+}
+
+enum Phase {
+   TRAIN = 0;
+   TEST = 1;
+}
+
+message InputBlob {
+	optional string name = 1;
+	optional int32 num = 2;
+	optional int32 channels = 3;
+	optional int32 height = 4;
+	optional int32 width = 5;
+}
+
+message NetParameter {
+  optional string name = 1; // consider giving the network a name
+  
+  
+  repeated LayerParameter layer = 100; // protobuf copy the field by the order number, it can not be changed for properly copyed between our lib and caffe
+  
+  
+  
+  repeated string input = 3; // The input to the network
+  optional Phase phase = 4 [default = TEST];
+  
+  repeated InputBlob input_blob = 5;
+  optional int32 num_flow = 6 [default = 0];
+}
+
+// A message that stores the solver snapshots
+message SolverState {
+  optional int32 iter = 1; // The current iteration
+  optional string learned_net = 2; // The file that stores the learned net.
+  repeated BlobProto history = 3; // The history for sgd solvers
+}
+
+message SolverParameter {
+	optional string net = 1;
+	optional NetParameter net_param = 2;
+	optional string type = 3 [default = "SGD"];
+	optional float base_lr = 4; 
+	optional int32 display = 5; 
+	optional int32 average_loss = 6 [default = 1];
+	optional int32 max_iter = 7; 
+  optional int32 snapshot = 8 [default = 0]; 
+	optional float momentum = 9; 
+  optional float weight_decay = 10; 
+  optional string lr_policy = 11; 
+  optional string snapshot_prefix = 12; 
+  optional int32 iter_size = 13 [default = 1];
+  
+  
+  optional float gamma = 14; 
+  optional float power = 15; 
+  optional int32 stepsize = 16;
+  repeated int32 stepvalue = 17;
+  
+  optional bool test_initialization = 18;
+  optional int32 test_interval = 19;
+  optional int32 test_iter = 20;
+  optional string eval_type = 21 [default = "classification"];
+  optional bool accumulate_batch_norm = 22 [default = false];
+  optional uint32 accumulate_test_iter = 23;
+  optional uint32 accumulate_max_iter = 24;
+}
+
+message PoolingParameter {
+  enum PoolMethod {
+    MAX = 0;
+    AVE = 1;
+  }
+  optional PoolMethod pool = 1 [default = MAX]; // The pooling method
+  optional uint32 pad = 2 [default = 0]; // The padding size (equal in Y, X)
+  optional uint32 kernel_size = 3; // The kernel size (square)
+  optional uint32 stride = 4 [default = 1]; // The stride (equal in Y, X)
+  
+  optional bool global_pool = 5 [default = false];
+}
+
+message LossParameter {
+  optional int32 ignore_label = 1;
+  optional float keep_portion = 2 [default = 0.5];
+}
+

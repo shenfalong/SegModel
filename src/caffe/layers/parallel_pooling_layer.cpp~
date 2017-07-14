@@ -1,0 +1,61 @@
+#include "caffe/layers/parallel_pooling_layer.hpp"
+
+namespace caffe {
+
+template <typename Dtype>
+void ParallelPoolingLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) 
+{
+  if (this->layer_param_.pooling_param().global_pool() == false)
+	{
+		kernel_size_ = this->layer_param_.pooling_param().kernel_size();	
+		pad_ = this->layer_param_.pooling_param().pad();
+		stride_ = this->layer_param_.pooling_param().stride();
+	}	
+}
+
+template <typename Dtype>
+void ParallelPoolingLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top)
+{
+  int num = bottom[0]->num();
+	int channels = bottom[0]->channels();
+	int height = bottom[0]->height();
+	int width = bottom[0]->width();
+  
+
+	if (this->layer_param_.pooling_param().global_pool() == false)
+	{
+		pooled_height_ = (height + 2 * pad_ - kernel_size_) / stride_ + 1;
+		pooled_width_ = (width + 2 * pad_ - kernel_size_) / stride_ + 1;
+	}
+	else
+	{
+		pooled_height_ = 1;
+		pooled_width_ = 1;
+	}
+ 
+  for(int i=0;i<top.size();i++)
+    top[i]->Reshape(num, channels, pooled_height_, pooled_width_);
+    
+  if (this->layer_param_.pooling_param().pool() == PoolingParameter_PoolMethod_MAX )
+  {
+    for(int i=0;i<bottom.size();i++)
+      parallel_max_idx_[i]->Reshape(num, channels, pooled_height_, pooled_width_);
+  }
+}
+
+template <typename Dtype>
+void ParallelPoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) 
+{}
+
+template <typename Dtype>
+void ParallelPoolingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, const vector<Blob<Dtype>*>& bottom) 
+{}
+
+
+#ifdef CPU_ONLY
+STUB_GPU(ParallelPoolingLayer);
+#endif
+
+INSTANTIATE_CLASS(ParallelPoolingLayer);
+REGISTER_LAYER_CLASS(ParallelPooling);
+}  // namespace caffe

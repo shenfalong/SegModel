@@ -1,0 +1,38 @@
+#include <vector>
+
+#include "caffe/layers/entropy_pooling_layer.hpp"
+#include "caffe/util/math_functions.hpp"
+
+namespace caffe {
+
+template <typename Dtype>
+__global__ void SoftmaxLossForwardGPU(const int numspatial,const int num, const int channels, const int spatial,const Dtype * in, Dtype  *out)
+{
+	CUDA_KERNEL_LOOP(ind, numspatial) 
+  { 
+  	int n = numspatial / spatial;
+  	int s = numspatial % spatial;
+  	Dtype sum = 0;
+  	for (int c=0;c<channels;c++)
+			sum += -log(max(in[(n * channels + c) * spatial+s], Dtype(FLT_MIN)));
+		out[ind] = sum;
+	}
+}
+template <typename Dtype>
+void EntropyPoolingLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) 
+{
+	softmax_layer_->Forward(softmax_bottom_vec_, softmax_top_vec_);
+	
+	 
+	SoftmaxLossForwardGPU<Dtype><<<CAFFE_GET_BLOCKS(num * height * width), CAFFE_CUDA_NUM_THREADS>>>
+  (num * height * width, prob_data, label, loss_data, num, channels*height*width, height*width, has_ignore_label_, ignore_label_, count_data);
+}
+
+template <typename Dtype>
+void EntropyPoolingLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top, const vector<Blob<Dtype>*>& bottom) 
+{
+	//do nothing
+}
+
+INSTANTIATE_LAYER_GPU_FUNCS(EntropyPoolingLayer);
+}  // namespace caffe

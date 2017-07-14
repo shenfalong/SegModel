@@ -1,0 +1,386 @@
+#include <vector>
+#include <algorithm>
+#include <cfloat>
+#include <vector>
+
+#include "caffe/common.hpp"
+#include "caffe/layer.hpp"
+#include "caffe/syncedmem.hpp"
+#include "caffe/layers/fast_guided_crf_layer.hpp"
+#include "caffe/layer.hpp"
+#include "caffe/util/math_functions.hpp"
+using std::max;
+using std::min;
+namespace caffe 
+{
+#if 0
+template <typename Dtype>
+void softmax_forward(int maxStates,int nNodes, const Dtype * energy,Dtype * prob)
+{
+  for(int n=0;n<nNodes;n++)
+  {
+    for(int s=0;s<maxStates;s++)
+      prob[s*nNodes+n] = energy[s*nNodes+n];
+
+
+    Dtype max_prob = Dtype(-FLT_MAX);
+    for(int s=0;s<maxStates;s++)
+      max_prob =max(max_prob,prob[s*nNodes+n]);
+
+    for(int s=0;s<maxStates;s++)
+      prob[s*nNodes+n] -= max_prob;
+
+    Dtype sum = 0;
+    for(int s=0;s<maxStates;s++)
+      sum += exp(prob[s*nNodes+n]);
+
+    for(int s=0;s<maxStates;s++)
+      prob[s*nNodes+n] = exp(prob[s*nNodes+n]) / sum;
+  }
+}
+template <typename Dtype>
+void my_sum(int N,const Dtype alpha,const Dtype * a,const Dtype beta, const Dtype* b, Dtype *c)
+{
+  for(int n=0;n<N;n++)
+  {
+    c[n]=alpha*a[n]+beta*b[n];
+  }
+}
+template <typename Dtype>
+void box_filter_x(const int width, const int height,const int channels, int radius, const Dtype * id, Dtype *od)
+{
+
+  for(int ind=0;ind<height*channels;ind++)
+  {
+    Dtype sum=0;
+    sum += id[ind*width+0];
+    for (int w = 1; w <= radius; w++)
+    {
+      sum += id[ind*width+0];
+      sum += id[ind*width+w];
+    }
+    od[ind*width+0] = sum;
+    for (int w = 1; w < width-radius; w++)
+    {
+      sum += id[ind*width+w+radius];
+      sum -= id[ind*width+max(w-radius-1,0)];
+      od[ind*width+w] = sum;
+    }
+    for (int w = width-radius; w < width; w++)
+    {
+      sum += id[ind*width+width-1];
+      sum -= id[ind*width+max(w-radius-1,0)];
+      od[ind*width+w] = sum;
+    }
+  }
+}
+template <typename Dtype>
+void box_filter_y(const int width, const int height,const int channels, const int radius, const Dtype * number, const Dtype * id, Dtype *od)
+{
+
+  for(int ind=0;ind<width*channels;ind++)
+  {
+    int c=ind/width;
+    int w=ind%width;
+    Dtype sum=0;
+    sum += id[(c*height+0)*width+w];
+    for (int h = 1; h <= radius; h++)
+    {
+      sum += id[(c*height+0)*width+w];
+      sum += id[(c*height+h)*width+w];
+    }
+    od[(c*height+0)*width+w] = sum / number[0*width+w];
+    for (int h = 1; h < height-radius; h++)
+    {
+      sum += id[(c*height+h+radius)*width+w];
+      sum -= id[(c*height+max(h-radius-1,0))*width+w];
+      od[(c*height+h)*width+w] = sum / number[h*width+w];
+    }
+    for (int h= height - radius; h < height; h++)
+    {
+      sum += id[(c*height+height-1)*width+w];
+      sum -= id[(c*height+max(h-radius-1,0))*width+w];
+      od[(c*height+h)*width+w] = sum / number[h*width+w];
+    }
+  }
+}
+template <typename Dtype>
+void box_filter(const int height,const int width, const int channels, const int radius,const Dtype *id,const Dtype *number, Dtype *od,Dtype * buffer)
+{
+  box_filter_x(width, height, channels,radius, id, buffer);
+  box_filter_y(width, height, channels,radius,number, buffer, od);
+}
+template <typename Dtype>
+void vector_product(const int spatial_dim,const int channels1,const int channels2,const Dtype * a,const Dtype * b,Dtype *var)//var = a .* b
+{
+  for(int ind=0;ind<spatial_dim*channels1*channels2;ind++)
+  {
+    int s=ind%spatial_dim;
+    int c1=ind/spatial_dim%channels1;
+    int c2=ind/spatial_dim/channels1;
+    var[ind]=a[c1*spatial_dim+s]*b[c2*spatial_dim+s];
+  }
+}
+template <typename Dtype>
+void substract_vector_product(const int spatial_dim,const int channels1,const int channels2,const Dtype *avg,const Dtype *a,const Dtype *b, Dtype * var)//var = avg - a.*b;
+{
+  for(int ind=0;ind<spatial_dim*channels1*channels2;ind++)
+  {
+    int s=ind%spatial_dim;
+    int c1=ind/spatial_dim%channels1;
+    int c2=ind/spatial_dim/channels1;
+    var[ind]=avg[ind]-a[c1*spatial_dim+s]*b[c2*spatial_dim+s];
+  }
+}
+template <typename Dtype>
+void inv_var_I_eps(const int spatial_dim,const int channels,const Dtype eps,Dtype *var_I,Dtype *inv_var_I)
+{
+  for(int ind=0;ind<spatial_dim;ind++)
+  {
+    int s=ind;
+    for(int c=0;c<channels;c++)
+      var_I[(c*channels+c)*spatial_dim+s]=var_I[(c*channels+c)*spatial_dim+s]+eps;
+
+    Dtype det = var_I[(0*channels+0)*spatial_dim+s]*(var_I[(1*channels+1)*spatial_dim+s]*var_I[(2*channels+2)*spatial_dim+s]-var_I[(2*channels+1)*spatial_dim+s]*var_I[(1*channels+2)*spatial_dim+s])
+        - var_I[(0*channels+1)*spatial_dim+s]*(var_I[(1*channels+0)*spatial_dim+s]*var_I[(2*channels+2)*spatial_dim+s]-var_I[(2*channels+0)*spatial_dim+s]*var_I[(1*channels+2)*spatial_dim+s])
+        + var_I[(0*channels+2)*spatial_dim+s]*(var_I[(1*channels+0)*spatial_dim+s]*var_I[(2*channels+1)*spatial_dim+s]-var_I[(2*channels+0)*spatial_dim+s]*var_I[(1*channels+1)*spatial_dim+s]);
+
+    inv_var_I[(0*channels+0)*spatial_dim+s] = 1/det*(var_I[(1*channels+1)*spatial_dim+s]*var_I[(2*channels+2)*spatial_dim+s]
+        -var_I[(2*channels+1)*spatial_dim+s]*var_I[(1*channels+2)*spatial_dim+s]);
+    inv_var_I[(0*channels+1)*spatial_dim+s] = 1/det*(var_I[(2*channels+0)*spatial_dim+s]*var_I[(1*channels+2)*spatial_dim+s]
+        -var_I[(1*channels+0)*spatial_dim+s]*var_I[(2*channels+2)*spatial_dim+s]);
+    inv_var_I[(0*channels+2)*spatial_dim+s] = 1/det*(var_I[(1*channels+0)*spatial_dim+s]*var_I[(2*channels+1)*spatial_dim+s]
+        -var_I[(2*channels+0)*spatial_dim+s]*var_I[(1*channels+1)*spatial_dim+s]);
+
+    inv_var_I[(1*channels+0)*spatial_dim+s] = 1/det*(var_I[(2*channels+1)*spatial_dim+s]*var_I[(0*channels+2)*spatial_dim+s]
+        -var_I[(0*channels+1)*spatial_dim+s]*var_I[(2*channels+2)*spatial_dim+s]);
+    inv_var_I[(1*channels+1)*spatial_dim+s] = 1/det*(var_I[(0*channels+0)*spatial_dim+s]*var_I[(2*channels+2)*spatial_dim+s]
+        -var_I[(2*channels+0)*spatial_dim+s]*var_I[(0*channels+2)*spatial_dim+s]);
+    inv_var_I[(1*channels+2)*spatial_dim+s] = 1/det*(var_I[(0*channels+1)*spatial_dim+s]*var_I[(2*channels+0)*spatial_dim+s]
+        -var_I[(0*channels+0)*spatial_dim+s]*var_I[(2*channels+1)*spatial_dim+s]);
+
+    inv_var_I[(2*channels+0)*spatial_dim+s] = 1/det*(var_I[(0*channels+1)*spatial_dim+s]*var_I[(1*channels+2)*spatial_dim+s]
+        -var_I[(1*channels+1)*spatial_dim+s]*var_I[(0*channels+2)*spatial_dim+s]);
+    inv_var_I[(2*channels+1)*spatial_dim+s] = 1/det*(var_I[(1*channels+0)*spatial_dim+s]*var_I[(0*channels+2)*spatial_dim+s]
+        -var_I[(0*channels+0)*spatial_dim+s]*var_I[(1*channels+2)*spatial_dim+s]);
+    inv_var_I[(2*channels+2)*spatial_dim+s] = 1/det*(var_I[(0*channels+0)*spatial_dim+s]*var_I[(1*channels+1)*spatial_dim+s]
+        -var_I[(0*channels+1)*spatial_dim+s]*var_I[(1*channels+0)*spatial_dim+s]);
+  }
+
+}
+template <typename Dtype>
+void div_sum(const int spatial_dim,const int channels,const int maxStates,const Dtype *inv_var_I,const Dtype *cov_Ip,Dtype *a)
+{
+  for(int ind=0;ind<spatial_dim*maxStates;ind++)
+  {
+    int s=ind%spatial_dim;
+    int m=ind/spatial_dim;
+
+    a[(m*channels+0)*spatial_dim+s]=cov_Ip[(m*channels+0)*spatial_dim+s]*inv_var_I[(0*channels+0)*spatial_dim+s]
+        +cov_Ip[(m*channels+1)*spatial_dim+s]*inv_var_I[(0*channels+1)*spatial_dim+s]
+        +cov_Ip[(m*channels+2)*spatial_dim+s]*inv_var_I[(0*channels+2)*spatial_dim+s];
+
+    a[(m*channels+1)*spatial_dim+s]=cov_Ip[(m*channels+0)*spatial_dim+s]*inv_var_I[(1*channels+0)*spatial_dim+s]
+        +cov_Ip[(m*channels+1)*spatial_dim+s]*inv_var_I[(1*channels+1)*spatial_dim+s]
+        +cov_Ip[(m*channels+2)*spatial_dim+s]*inv_var_I[(1*channels+2)*spatial_dim+s];
+
+    a[(m*channels+2)*spatial_dim+s]=cov_Ip[(m*channels+0)*spatial_dim+s]*inv_var_I[(2*channels+0)*spatial_dim+s]
+        +cov_Ip[(m*channels+1)*spatial_dim+s]*inv_var_I[(2*channels+1)*spatial_dim+s]
+        +cov_Ip[(m*channels+2)*spatial_dim+s]*inv_var_I[(2*channels+2)*spatial_dim+s];
+  }
+}
+
+template <typename Dtype>
+void substract_vector_matrix_product(int spatial_dim,int channels,int maxStates,const Dtype * mean_p,const Dtype * a,const Dtype * mean_I,Dtype *b)//	b = mean_p - mean_I *. a;
+{
+  for(int ind=0;ind<spatial_dim*maxStates;ind++)
+  {
+    int s=ind%spatial_dim;
+    int m=ind/spatial_dim;
+    b[ind] = mean_p[ind]
+        - mean_I[0*spatial_dim+s] * a[(m*channels+0)*spatial_dim+s]
+        - mean_I[1*spatial_dim+s] * a[(m*channels+1)*spatial_dim+s]
+        - mean_I[2*spatial_dim+s] * a[(m*channels+2)*spatial_dim+s];
+  }
+}
+template <typename Dtype>
+void vector_matrix_product_sum(const int spatial_dim,const int channels,const int maxStates,const Dtype *mean_a,const Dtype *I,const Dtype *mean_b,Dtype *q)// q = I .* mean_a + mean_b;
+{
+
+  for(int ind=0;ind<spatial_dim*maxStates;ind++)
+  {
+    int s=ind%spatial_dim;
+    int m=ind/spatial_dim;
+    q[ind] = I[0*spatial_dim+s] * mean_a[(m*channels+0)*spatial_dim+s]
+        + I[1*spatial_dim+s] * mean_a[(m*channels+1)*spatial_dim+s]
+        + I[2*spatial_dim+s] * mean_a[(m*channels+2)*spatial_dim+s]
+        + mean_b[ind];
+  }
+
+}
+template <typename Dtype>
+void GuidedCRFLayer<Dtype>::guided_filter(const int height,const int width,const int channels,const int maxStates,const Dtype *I,const Dtype * p,Dtype *output_p)
+{
+  const int spatial_dim=height*width;
+
+  //******************************** image ************************************
+  box_filter(height,width,1,radius,ones.cpu_data(),ones.cpu_data(),number.mutable_cpu_data(),buffer_ones.mutable_cpu_data());
+
+  box_filter(height,width,channels,radius,I,number.cpu_data(),mean_I.mutable_cpu_data(),buffer_image.mutable_cpu_data());
+
+  vector_product(spatial_dim,channels,channels,I,I,II.mutable_cpu_data());// II = I .* I;
+
+  box_filter(height,width,channels*channels,radius,II.cpu_data(),number.cpu_data(),mean_II.mutable_cpu_data(),buffer_image_image.mutable_cpu_data());
+
+  substract_vector_product(spatial_dim,channels,channels,mean_II.cpu_data(),mean_I.cpu_data(),mean_I.cpu_data(), var_I.mutable_cpu_data());//var_I = mean_II - mean_I .* mean_I;
+
+  //******************************** prob ************************************
+  box_filter(height,width,maxStates,radius,p,number.cpu_data(),mean_p.mutable_cpu_data(),buffer_score.mutable_cpu_data());
+
+  vector_product(spatial_dim,channels,maxStates,I,p,Ip.mutable_cpu_data());//Ip = I .* p;
+  box_filter(height,width,channels*maxStates,radius,Ip.cpu_data(),number.cpu_data(),mean_Ip.mutable_cpu_data(),buffer_image_score.mutable_cpu_data());
+
+
+  substract_vector_product(spatial_dim,channels,maxStates,mean_Ip.cpu_data(),mean_I.cpu_data(),mean_p.cpu_data(), cov_Ip.mutable_cpu_data());//cov_Ip = mean_Ip - mean_I .* mean_p;
+
+  inv_var_I_eps(spatial_dim,channels,eps,var_I.mutable_cpu_data(),inv_var_I.mutable_cpu_data());//inv_var_I=inv(var_I + eps);
+
+
+  div_sum(spatial_dim,channels,maxStates,inv_var_I.cpu_data(),cov_Ip.cpu_data(),a.mutable_cpu_data());//a = cov_Ip ./ inv_var_I;
+
+  box_filter(height,width,channels*maxStates,radius,a.cpu_data(),number.cpu_data(),mean_a.mutable_cpu_data(),buffer_image_score.mutable_cpu_data());
+
+  substract_vector_matrix_product(spatial_dim,channels,maxStates,mean_p.cpu_data(),a.cpu_data(),mean_I.cpu_data(),b.mutable_cpu_data());//	b = mean_p - mean_I .* a;
+
+
+  box_filter(height,width,maxStates,radius,b.cpu_data(),number.cpu_data(),mean_b.mutable_cpu_data(),buffer_score.mutable_cpu_data());
+
+  vector_matrix_product_sum(spatial_dim,channels,maxStates,mean_a.cpu_data(),I,mean_b.cpu_data(),output_p);// q = I .* mean_a + mean_b;
+}
+#endif
+//**********************************************************************************************************************************************************
+template <typename Dtype>
+void FastGuidedCRFLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
+                                       const vector<Blob<Dtype>*>& top)
+{
+  maxIter = this->layer_param_.crf_param().max_iter();
+  radius=this->layer_param_.crf_param().radius();
+  alpha=this->layer_param_.crf_param().alpha();
+  eps=this->layer_param_.crf_param().eps();
+  nodeBel.resize(maxIter);
+
+
+  for(int iter=0;iter<maxIter;iter++)
+    nodeBel[iter]=new Blob<Dtype>();
+
+  if (this->blobs_.size() > 0)
+    LOG(INFO)<<"skip initialization";
+  else
+  {
+    int channels = bottom[0]->channels();
+    this->blobs_.resize(1);
+    this->blobs_[0].reset(new Blob<Dtype>(1,1,channels,channels));
+    caffe_set(this->blobs_[0]->count(),Dtype(1),this->blobs_[0]->mutable_cpu_data());
+    for(int c=0;c<channels;c++)
+      this->blobs_[0]->mutable_cpu_data()[c*channels+c]=0;
+    
+    
+    
+    if (this->layer_param_.param_size() == 0)
+    {
+      this->lr_mult().push_back(1);
+      this->decay_mult().push_back(1);
+
+    }
+    else if (this->layer_param_.param_size() == 1)
+    {
+      this->lr_mult().push_back(this->layer_param_.param(0).lr_mult());
+      this->decay_mult().push_back(this->layer_param_.param(0).decay_mult());
+    }
+    else
+      LOG(FATAL)<<"please set two params for guide CRF layer";
+  }
+}
+
+template <typename Dtype>
+void FastGuidedCRFLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top)
+{
+
+  top[0]->ReshapeLike(*bottom[0]);
+  int num = bottom[0]->num();
+  int maxStates = bottom[0]->channels();
+  int channels = bottom[1]->channels();
+  int height = bottom[0]->height();
+  int width = bottom[0]->width();
+	
+	if (maxStates != this->blobs_[0]->width())
+	{
+		LOG(INFO)<<"channels not match "<<maxStates<<" vs "<<this->blobs_[0]->width();
+		this->blobs_[0].reset(new Blob<Dtype>(1,1,maxStates,maxStates));
+			
+		caffe_set(this->blobs_[0]->count(),Dtype(1),this->blobs_[0]->mutable_cpu_data());
+    for(int c=0;c<maxStates;c++)
+      this->blobs_[0]->mutable_cpu_data()[c*maxStates+c]=0;
+	}
+
+  filterPot.Reshape(num,maxStates,height,width);
+  compatPot.Reshape(num,maxStates,height,width);
+  tempPot.Reshape(num,maxStates,height,width);
+  output_p1.Reshape(num,maxStates,height,width);
+  output_p2.Reshape(num,maxStates,height,width);
+  for(int iter=0;iter<maxIter;iter++)
+    nodeBel[iter]->Reshape(num,maxStates,height,width);
+	
+	
+	mean_a_up.Reshape(num*maxStates,channels,height,width);
+  mean_b_up.Reshape(num*maxStates,1,height,width);
+	
+	I_sub.Reshape(num,3,height/4,width/4);
+	temp_sub.Reshape(num*maxStates,1,height/4,width/4);
+	
+  mean_I.Reshape(num,channels,height/4,width/4);
+  II.Reshape(num,channels*channels,height/4,width/4);
+  mean_II.Reshape(num,channels*channels,height/4,width/4);
+  var_I.Reshape(num,channels*channels,height/4,width/4);
+  inv_var_I.Reshape(num,channels*channels,height/4,width/4);
+  mean_p.Reshape(num*maxStates,1,height/4,width/4);
+  Ip.Reshape(num*maxStates,channels,height/4,width/4);
+  mean_Ip.Reshape(num*maxStates,channels,height/4,width/4);
+  cov_Ip.Reshape(num*maxStates,channels,height/4,width/4);
+  a.Reshape(num*maxStates,channels,height/4,width/4);
+  b.Reshape(num*maxStates,1,height/4,width/4);
+  mean_a.Reshape(num*maxStates,channels,height/4,width/4);
+  mean_b.Reshape(num*maxStates,1,height/4,width/4);
+  buffer_image.Reshape(num,channels,height/4,width/4);
+  buffer_score.Reshape(num,maxStates,height/4,width/4);
+  buffer_image_score.Reshape(num,channels*maxStates,height/4,width/4);
+  buffer_image_image.Reshape(num,channels*channels,height/4,width/4);
+  
+  
+}
+
+template <typename Dtype>
+void FastGuidedCRFLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top)
+{
+}
+
+template <typename Dtype>
+void FastGuidedCRFLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, const vector<Blob<Dtype>*>& bottom)
+{
+}
+
+template <typename Dtype>
+FastGuidedCRFLayer<Dtype>::~FastGuidedCRFLayer()
+{
+	for(int iter=0;iter<maxIter;iter++)
+    delete nodeBel[iter];
+  nodeBel.clear();
+}
+
+#ifdef CPU_ONLY
+STUB_GPU(FastGuidedCRFLayer);
+#endif  
+
+INSTANTIATE_CLASS(FastGuidedCRFLayer);
+REGISTER_LAYER_CLASS(FastGuidedCRF);
+}  // namespace caffe

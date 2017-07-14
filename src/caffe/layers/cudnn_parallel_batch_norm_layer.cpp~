@@ -1,0 +1,140 @@
+#ifdef USE_CUDNN
+#include <vector>
+
+#include "caffe/layers/cudnn_parallel_batch_norm_layer.hpp"
+
+namespace caffe {
+
+template <typename Dtype>
+void CuDNNParallelBatchNormLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) 
+{
+	LOG(INFO)<<"fdasfasfasfasdf";
+	parallel_handle_.resize(bottom.size());
+	parallel_stream_.resize(bottom.size());
+	parallel_bottom_desc_.resize(bottom.size());
+	parallel_top_desc_.resize(bottom.size());
+	parallel_scale_bias_desc_.resize(bottom.size());
+	parallel_blobs_.resize(bottom.size()*4);
+	savedmean.resize(bottom.size());
+  savedinvvariance.resize(bottom.size());
+	
+	for(int i=0;i<bottom.size();i++)
+  {
+		savedmean[i]=new Blob<Dtype>();
+		savedinvvariance[i]=new Blob<Dtype>();
+	}
+	
+  for(int i=0;i<bottom.size();i++)
+  {
+  	CUDA_CHECK(cudaSetDevice(Caffe::GPUs[i]));
+		CUDNN_CHECK(cudnnCreate(&parallel_handle_[i]));		
+		CUDA_CHECK(cudaStreamCreate(&parallel_stream_[i]));
+		
+		CUDNN_CHECK(cudnnSetStream(parallel_handle_[i], parallel_stream_[i]));
+		
+		cudnn::createTensor4dDesc<Dtype>(&parallel_bottom_desc_[i]);
+		cudnn::createTensor4dDesc<Dtype>(&parallel_top_desc_[i]);
+		cudnn::createTensor4dDesc<Dtype>(&parallel_scale_bias_desc_[i]);
+	}	
+  CUDA_CHECK(cudaSetDevice(Caffe::GPUs[0]));
+    
+   
+  handles_setup_ = true;
+  
+  const int K = bottom[0]->channels();
+
+ 	if (this->blobs_.size() != 4)
+ 	{
+ 		
+ 		this->blobs_.resize(4);
+ 		for(int i=0;i<this->blobs_.size();i++)
+ 		{
+ 			this->blobs_[i].reset(new Blob<Dtype>());
+  		this->blobs_[i]->Reshape(1,K,1,1);	
+  	}	
+  	caffe_gpu_set(this->blobs_[0]->count(),Dtype(1),this->blobs_[0]->mutable_gpu_data());
+ 		caffe_gpu_set(this->blobs_[1]->count(),Dtype(0),this->blobs_[1]->mutable_gpu_data());
+ 		caffe_gpu_set(this->blobs_[2]->count(),Dtype(0),this->blobs_[2]->mutable_gpu_data());
+ 		caffe_gpu_set(this->blobs_[3]->count(),Dtype(1),this->blobs_[3]->mutable_gpu_data());
+ 	} 
+ 	
+	this->layer_param_.add_param();
+  this->layer_param_.add_param();
+  
+  this->layer_param_.mutable_param(2)->set_lr_mult(0);
+  this->layer_param_.mutable_param(3)->set_lr_mult(0);
+		
+	for(int i=0;i<this->parallel_blobs_.size();i++)
+		this->parallel_blobs_[i] = new Blob<Dtype>();
+	for(int i=0;i<bottom.size();i++)
+	{
+		CUDA_CHECK(cudaSetDevice(Caffe::GPUs[i]));
+		this->parallel_blobs_[4*i]->Reshape(1,K,1,1);
+		this->parallel_blobs_[4*i+1]->Reshape(1,K,1,1);
+		this->parallel_blobs_[4*i+2]->Reshape(1,K,1,1);
+		this->parallel_blobs_[4*i+3]->Reshape(1,K,1,1);
+		caffe_gpu_set(this->parallel_blobs_[4*i]->count(),Dtype(0),this->parallel_blobs_[4*i]->mutable_gpu_data());
+		caffe_gpu_set(this->parallel_blobs_[4*i+1]->count(),Dtype(0),this->parallel_blobs_[4*i+1]->mutable_gpu_data());
+		caffe_gpu_set(this->parallel_blobs_[4*i+2]->count(),Dtype(0),this->parallel_blobs_[4*i+2]->mutable_gpu_data());
+		caffe_gpu_set(this->parallel_blobs_[4*i+3]->count(),Dtype(0),this->parallel_blobs_[4*i+3]->mutable_gpu_data());
+	}	
+	CUDA_CHECK(cudaSetDevice(Caffe::GPUs[0]));
+	
+	buffer_w.Reshape(1,K,1,1);
+	buffer_b.Reshape(1,K,1,1);	
+	
+	number_collect_sample = 0;	
+}
+
+template <typename Dtype>
+void CuDNNParallelBatchNormLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) 
+{
+
+	const int K = bottom[0]->channels();
+	for(int i=0;i<bottom.size();i++)
+	{	
+		const int N = bottom[i]->num();
+		const int H = bottom[i]->height();
+		const int W = bottom[i]->width();
+	
+		top[i]->Reshape(N,K,H,W); 
+
+		savedmean[i]->Reshape(1,K,1,1);
+ 		savedinvvariance[i]->Reshape(1,K,1,1);
+		
+		cudnn::setTensor4dDesc<Dtype>(&parallel_bottom_desc_[i], N, K, H, W);
+		cudnn::setTensor4dDesc<Dtype>(&parallel_top_desc_[i], N, K, H, W);
+		cudnn::setTensor4dDesc<Dtype>(&parallel_scale_bias_desc_[i],  1, K, 1, 1);
+
+	}	
+	
+}
+template <typename Dtype>
+void CuDNNParallelBatchNormLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) 
+{}
+template <typename Dtype>
+void CuDNNParallelBatchNormLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, const vector<Blob<Dtype>*>& bottom) 
+{}
+template <typename Dtype>
+CuDNNParallelBatchNormLayer<Dtype>::~CuDNNParallelBatchNormLayer() 
+{
+  if (!handles_setup_)  
+  	return; 
+	for(int i=0;i<this->parallel_bottom_desc_.size();i++)
+	{
+		cudnnDestroyTensorDescriptor(this->parallel_bottom_desc_[i]);
+		cudnnDestroyTensorDescriptor(this->parallel_top_desc_[i]);
+		cudnnDestroyTensorDescriptor(this->parallel_scale_bias_desc_[i]);
+		cudnnDestroy(this->parallel_handle_[i]);
+		cudaStreamDestroy(parallel_stream_[i]);
+		delete savedmean[i];
+ 		delete savedinvvariance[i];
+	}	
+	for(int i=0;i<this->parallel_blobs_.size();i++)
+		delete this->parallel_blobs_[i];	
+}
+
+INSTANTIATE_CLASS(CuDNNParallelBatchNormLayer);
+REGISTER_LAYER_CLASS(CuDNNParallelBatchNorm);
+}  // namespace caffe
+#endif

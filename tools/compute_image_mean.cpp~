@@ -1,0 +1,125 @@
+#include <stdint.h>
+#include <algorithm>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/highgui/highgui_c.h>
+
+
+
+#include "boost/scoped_ptr.hpp"
+#include "gflags/gflags.h"
+#include "glog/logging.h"
+
+#include "caffe/proto/caffe.pb.h"
+#include "caffe/util/db.hpp"
+#include "caffe/util/io.hpp"
+
+using namespace caffe;  // NOLINT(build/namespaces)
+
+using std::max;
+using std::pair;
+using boost::scoped_ptr;
+
+DEFINE_string(backend, "lmdb",
+        "The backend {leveldb, lmdb} containing the images");
+
+int main(int argc, char** argv) 
+{
+  ::google::InitGoogleLogging(argv[0]);
+
+//--------------- it is NECESSARY to assign the GPU series-------------------
+  caffe::Caffe::GPUs.clear();
+  caffe::Caffe::GPUs.resize(1);
+  caffe::Caffe::GPUs[0]=0;
+//------------------------------------------------------------------
+
+
+
+#ifndef GFLAGS_GFLAGS_H_
+  namespace gflags = google;
+#endif
+
+
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  if (argc < 2 || argc > 2) {
+  	LOG(INFO)<<"we need 2 parameters";
+    return 1;
+  }
+	LOG(INFO)<<"-----start computing mean value---------";
+  scoped_ptr<db::DB> db(db::GetDB(FLAGS_backend));
+  db->Open(argv[1], db::READ);
+  scoped_ptr<db::Cursor> cursor(db->NewCursor());
+
+  BlobProto sum_blob;
+  int count = 0;
+  // load first datum
+  Datum datum;
+  cv::Mat cv_img;
+  datum.ParseFromString(cursor->value());
+
+	cv_img=DecodeDatumToCVMat(datum, true);
+
+  sum_blob.set_num(1);
+  sum_blob.set_channels(cv_img.channels());
+  sum_blob.set_height(cv_img.rows);
+  sum_blob.set_width(cv_img.cols);
+  const int data_size = cv_img.channels() * cv_img.rows * cv_img.cols;
+
+  for (int i = 0; i < data_size; ++i) {
+    sum_blob.add_data(0.);
+  }
+  LOG(INFO) << "Starting Iteration";
+
+  while (cursor->valid()) 
+  {
+    Datum datum;
+    datum.ParseFromString(cursor->value());
+  
+    cv_img=DecodeDatumToCVMat(datum, true);
+  	
+  	for (int h = 0; h < cv_img.rows; ++h) 
+  	{
+  		const uchar* ptr = cv_img.ptr<uchar>(h);
+  		int img_index = 0;
+		  for (int w = 0; w < cv_img.cols; ++w) 
+		  	for (int c = 0; c < 3; ++c) 
+		  	{	  		
+				  sum_blob.set_data((c*cv_img.rows+h)*cv_img.cols+w, sum_blob.data(i) + static_cast<float>(static_cast<float>(ptr[img_index])));
+				  img_index++;
+				} 
+		}		  
+    
+
+    ++count;
+    if (count % 10000 == 0) {
+      LOG(INFO) << "Processed " << count << " files.";
+    }
+    cursor->Next();
+  }
+
+  if (count % 10000 != 0) {
+    LOG(INFO) << "Processed " << count << " files.";
+  }
+  for (int i = 0; i < sum_blob.data_size(); ++i) {
+    sum_blob.set_data(i, sum_blob.data(i) / count);
+  }
+
+ 
+  const int channels = sum_blob.channels();
+  const int dim = sum_blob.height() * sum_blob.width();
+  std::vector<float> mean_values(channels, 0.0);
+  LOG(INFO) << "Number of channels: " << channels;
+  for (int c = 0; c < channels; ++c) {
+    for (int i = 0; i < dim; ++i) {
+      mean_values[c] += sum_blob.data(dim * c + i);
+    }
+    LOG(INFO) << "mean_value channel [" << c << "]:" << mean_values[c] / dim;
+  }
+  return 0;
+}

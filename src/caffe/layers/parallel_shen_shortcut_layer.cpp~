@@ -1,0 +1,92 @@
+#include <vector> 
+
+#include "caffe/layers/parallel_shen_shortcut_layer.hpp"
+#include "caffe/util/math_functions.hpp"
+
+namespace caffe {
+
+
+template <typename Dtype>
+vector<Blob<Dtype> *> ParallelShenShortcutLayer<Dtype>::parallel_lambda;
+
+template <typename Dtype>
+vector<Blob<Dtype> *> ParallelShenShortcutLayer<Dtype>::parallel_all_one;
+
+template <typename Dtype>
+void ParallelShenShortcutLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top)
+{
+  dropout_ratio_ = this->layer_param_.shortcut_param().dropout_ratio();
+
+  if (this->blobs_.size() > 0)
+    LOG(INFO) << "Skipping parameter initialization";
+  else
+  {
+    this->blobs_.resize(1);
+    this->blobs_[0].reset(new Blob<Dtype>(1,1,1,1));
+    
+    Dtype scale = this->layer_param_.shortcut_param().scale();
+    this->blobs_[0]->mutable_cpu_data()[0]=Dtype(scale);
+
+		
+	  if (this->layer_param_.param_size() <= 0)
+	  {
+	  	this->lr_mult().push_back(1);
+	  	this->decay_mult().push_back(1);
+	  }	
+	  else
+	  {
+	  	this->lr_mult().push_back(this->layer_param_.param(0).lr_mult());
+	  	this->decay_mult().push_back(this->layer_param_.param(0).decay_mult());
+	  }
+	}	
+  
+  if (parallel_lambda.size() == 0)
+  {
+  	parallel_lambda.resize(top.size());
+  	parallel_all_one.resize(top.size());
+  	for (int i=0;i<top.size();i++)
+  	{
+   		parallel_lambda[i] = new Blob<Dtype>();
+  		parallel_all_one[i] = new Blob<Dtype>();
+  	}	
+	}
+}	
+
+template <typename Dtype>
+void ParallelShenShortcutLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) 
+{
+  CHECK_EQ(bottom.size(),2*top.size());
+}
+
+template <typename Dtype>
+void ParallelShenShortcutLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top)
+{
+}
+
+template <typename Dtype>
+void ParallelShenShortcutLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, const vector<Blob<Dtype>*>& bottom)
+{
+}
+
+template <typename Dtype>
+ParallelShenShortcutLayer<Dtype>::~ParallelShenShortcutLayer()
+{
+	if (parallel_lambda.size() != 0)
+	{
+		for (int i=0;i<top.size();i++)
+  	{
+   		delete parallel_lambda[i];
+  		delete parallel_all_one[i];
+  	}
+  	parallel_lambda.clear();	
+  	parallel_all_one.clear();	
+	}
+}
+
+#ifdef CPU_ONLY
+STUB_GPU(ParallelShenShortcutLayer);
+#endif
+
+INSTANTIATE_CLASS(ParallelShenShortcutLayer);
+REGISTER_LAYER_CLASS(ParallelShenShortcut);
+}  // namespace caffe
