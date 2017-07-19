@@ -24,6 +24,7 @@ Include
 * Multi-GPU efficient running.
 * Support multi-batch normalization.
 * Support training generative adversial networks.
+
 Inference
 ----
 
