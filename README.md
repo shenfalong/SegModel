@@ -2,7 +2,7 @@ SegModel
 =====
 
 
-This repository is for 'Semantic Segmentation via Structured Patch Prediction, Context CRF and Guidance CRF'.
+This repository is for 'Semantic Segmentation via Structured Patch Prediction, Context CRF and Guidance CRF'. [http://openaccess.thecvf.com/content_cvpr_2017/papers/Shen_Semantic_Segmentation_via_CVPR_2017_paper.pdf]
 
     @inproceedings{shen2017segmodel,
       author = {Falong Shen and
