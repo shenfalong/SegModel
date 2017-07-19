@@ -18,7 +18,9 @@ This library is based on [Caffe](https://github.com/BVLC/caffe). [CuDNN](https:/
 
 New Features
 ----
-
+*Imlplementation in this paper.
+*
+*
 
 Inference
 ----
