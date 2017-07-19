@@ -1,0 +1,83 @@
+#include <functional>
+#include <utility>
+#include <vector>
+
+#include "caffe/layers/accuracy_layer.hpp"
+#include "caffe/util/math_functions.hpp"
+
+namespace caffe 
+{
+
+template <typename Dtype>
+void AccuracyLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) 
+{
+  top_k_ = this->layer_param_.accuracy_param().top_k();
+
+  has_ignore_label_ = this->layer_param_.accuracy_param().has_ignore_label();
+  if (has_ignore_label_) 
+    ignore_label_ = this->layer_param_.accuracy_param().ignore_label();
+}
+
+template <typename Dtype>
+void AccuracyLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) 
+{
+  top[0]->Reshape(1,1,1,1);
+}
+
+template <typename Dtype>
+void AccuracyLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) 
+{
+  Dtype accuracy = 0;
+  const Dtype* bottom_data = bottom[0]->cpu_data();
+  const Dtype* bottom_label = bottom[1]->cpu_data();
+  
+  int num = bottom[0]->num();
+	int channels = bottom[0]->channels();
+	int height = bottom[0]->height();
+	int width = bottom[0]->width();
+  
+  vector<Dtype> maxval(top_k_+1);
+  vector<int> max_id(top_k_+1);
+
+  int count = 0;
+  for (int n = 0; n < num; n++) 
+  { 
+  	const int label_value = static_cast<int>(bottom_label[n]);
+    if (has_ignore_label_ && label_value == ignore_label_) 
+      continue;
+//step 1 get top-k      
+    std::vector<std::pair<Dtype, int> > bottom_data_vector;
+    bottom_data_vector.clear();
+    for (int c = 0; c < channels; c++) 
+      bottom_data_vector.push_back(std::make_pair(bottom_data[n * channels + c], c));
+      
+    std::partial_sort( bottom_data_vector.begin(), bottom_data_vector.begin() + top_k_, bottom_data_vector.end(), 
+    									std::greater<std::pair<Dtype, int> >());   									
+//step 2 check if true label is in top-k      									
+    for (int k = 0; k < top_k_; k++) 
+    {
+      if (bottom_data_vector[k].second == label_value) 
+      {
+        ++accuracy;      
+        break;
+      }
+    }
+    ++count;
+  }
+  top[0]->mutable_cpu_data()[0] = accuracy / count;
+}
+
+template <typename Dtype>
+void AccuracyLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, const vector<Blob<Dtype>*>& bottom) 
+{
+}
+
+#ifdef CPU_ONLY
+STUB_GPU(ConvolutionLayer);
+#endif
+
+
+INSTANTIATE_CLASS(AccuracyLayer);
+REGISTER_LAYER_CLASS(Accuracy);
+
+}  // namespace caffe

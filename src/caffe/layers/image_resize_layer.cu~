@@ -1,0 +1,47 @@
+#include <vector>
+
+#include "caffe/layers/image_resize_layer.hpp"
+#include "caffe/util/math_functions.hpp"
+
+namespace caffe {
+
+
+template <typename Dtype>
+__global__ void shen_kernel(int count)
+{
+  CUDA_KERNEL_LOOP(index, count)
+  {
+  }
+}    
+
+
+template <typename Dtype>
+void ImageResizeLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) 
+{
+	Forward_cpu(bottom,top);
+	
+	int num = bottom[0]->num();
+	int channels = bottom[0]->channels();
+  int height = bottom[0]->height();
+  int width = bottom[0]->width();
+}
+
+template <typename Dtype>
+void ImageResizeLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top, const vector<Blob<Dtype>*>& bottom) 
+{
+	Backward_cpu(top,bottom);
+	
+	
+	caffe_gpu_set(bottom[0]->count(),Dtype(0),bottom[0]->mutable_gpu_diff());
+		
+	int num = bottom[0]->num();
+	int channels = bottom[0]->channels();
+  int height = bottom[0]->height();
+  int width = bottom[0]->width();
+	shen_kernel<Dtype><<<CAFFE_GET_BLOCKS(width*channels), CAFFE_CUDA_NUM_THREADS>>>
+   (bottom[0]->count());
+}
+
+INSTANTIATE_LAYER_GPU_FUNCS(ImageResizeLayer);
+}  // namespace caffe
+		

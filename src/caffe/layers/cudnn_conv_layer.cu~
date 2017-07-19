@@ -1,0 +1,91 @@
+#ifdef USE_CUDNN
+#include <vector>
+
+
+#include "caffe/layers/cudnn_conv_layer.hpp"
+
+namespace caffe {
+
+__global__ void sync_deconv_groups() { }
+
+template <typename Dtype>
+void CuDNNConvolutionLayer<Dtype>::Forward_gpu( const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) 
+{  
+
+  const Dtype* weight = this->blobs_[0]->gpu_data();
+  
+  const Dtype* bottom_data = bottom[0]->gpu_data();
+  Dtype* top_data = top[0]->mutable_gpu_data();
+
+  CUDNN_CHECK(cudnnConvolutionForward(handle_[0],
+        cudnn::dataType<Dtype>::one,
+        bottom_descs_, bottom_data,
+        filter_desc_, weight,
+        conv_descs_,
+        fwd_algo_, this->workspace_[0]->mutable_gpu_data(), workspace_fwd_sizes_,
+        cudnn::dataType<Dtype>::zero,
+        top_descs_, top_data));
+        
+  if (this->layer_param_.convolution_param().bias_term()) 
+  {
+    const Dtype* bias_data = this->blobs_[1]->gpu_data();
+    CUDNN_CHECK(cudnnAddTensor(handle_[0],
+          cudnn::dataType<Dtype>::one,
+          bias_desc_, bias_data,
+          cudnn::dataType<Dtype>::one,
+          top_descs_, top_data));
+  }   
+  sync_deconv_groups<<<1, 1>>>();      
+}
+
+template <typename Dtype>
+void CuDNNConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top, const vector<Blob<Dtype>*>& bottom) 
+{
+	for (int g = 0; g <  3; g++) 
+    workspace[g] = reinterpret_cast<char *>(workspaceData) + g*max_workspace;      
+	
+	const Dtype* top_diff = top[0]->gpu_diff();
+	const Dtype* bottom_data = bottom[0]->gpu_data();
+	Dtype* bottom_diff = bottom[0]->mutable_gpu_diff(); 
+
+  if (this->layer_param_.convolution_param().bias_term()) 
+  {
+    CUDNN_CHECK(cudnnConvolutionBackwardBias(handle_[0],
+          cudnn::dataType<Dtype>::one,
+          top_descs_,  top_diff,
+          cudnn::dataType<Dtype>::one,
+          bias_desc_, this->blobs_[1]->mutable_gpu_diff()));
+  }
+
+  
+  
+  CUDNN_CHECK(cudnnConvolutionBackwardFilter(
+        handle_[1],
+        cudnn::dataType<Dtype>::one,
+        bottom_descs_, bottom_data,
+        top_descs_,    top_diff,
+        conv_descs_,
+        bwd_filter_algo_, this->workspace_[0]->mutable_gpu_data(), workspace_bwd_filter_sizes_,
+        cudnn::dataType<Dtype>::one,
+        filter_desc_, this->blobs_[0]->mutable_gpu_diff()));
+ 
+
+
+  CUDNN_CHECK(cudnnConvolutionBackwardData(
+        handle_[2],
+        cudnn::dataType<Dtype>::one,
+        filter_desc_, this->blobs_[0]->gpu_data(),
+        top_descs_, top_diff,
+        conv_descs_,
+        bwd_data_algo_, this->workspace_[0]->mutable_gpu_diff(), workspace_bwd_data_sizes_,
+        cudnn::dataType<Dtype>::zero,
+        bottom_descs_, bottom_diff));
+
+   
+  sync_deconv_groups<<<1, 1>>>();        
+}
+
+INSTANTIATE_LAYER_GPU_FUNCS(CuDNNConvolutionLayer);
+
+}  // namespace caffe
+#endif

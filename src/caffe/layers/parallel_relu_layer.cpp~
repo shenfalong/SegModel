@@ -1,0 +1,44 @@
+#include <algorithm>
+#include <vector>
+
+#include "caffe/layers/parallel_relu_layer.hpp"
+
+namespace caffe {
+
+template <typename Dtype>
+void ParallelReLULayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) 
+{
+	parallel_flag.resize(bottom.size());
+	for (int i=0;i<bottom.size();i++)
+  	parallel_flag[i] = new Blob<Dtype>(1,1,1,1);
+}
+
+
+template <typename Dtype>
+void ParallelReLULayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top)
+{
+	for (int i=0;i<bottom.size();i++)
+  {
+  	top[i]->ReshapeLike(*bottom[i]);
+  	parallel_flag[i]->Reshape(bottom[i]->num(),bottom[i]->channels(),bottom[i]->height(),bottom[i]->width());
+  }	
+}
+
+template <typename Dtype>
+void ParallelReLULayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) 
+{
+}
+
+template <typename Dtype>
+void ParallelReLULayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, const vector<Blob<Dtype>*>& bottom) 
+{
+}
+
+
+#ifdef CPU_ONLY
+STUB_GPU(ParallelReLULayer);
+#endif
+
+INSTANTIATE_CLASS(ParallelReLULayer);
+REGISTER_LAYER_CLASS(ParallelReLU);
+}  // namespace caffe
