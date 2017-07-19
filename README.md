@@ -22,7 +22,8 @@ Include
 * Imlplementation details of the training code and test code introduced in the [paper](http://openaccess.thecvf.com/content_cvpr_2017/papers/Shen_Semantic_Segmentation_via_CVPR_2017_paper.pdf).
 * GPU Memory reuse by setting different flow for each data blob. 
 * Multi-GPU efficient running.
-
+* Support multi-batch normalization.
+* Support training generative adversial networks.
 Inference
 ----
 
@@ -40,6 +41,8 @@ Datasets
 
 Pretrained Model
 ----
+* ImageNet model
+  
 * Pascal VOC 2012
 
 * Cityscapes
