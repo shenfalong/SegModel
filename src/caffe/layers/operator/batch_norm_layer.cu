@@ -256,42 +256,55 @@ template <typename Dtype>
 void BatchNormLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) 
 {
 	int num = bottom[0]->num();
-  int channels = bottom[0]->channels();
-  int height = bottom[0]->height();
-  int width = bottom[0]->width();
+	int channels = bottom[0]->channels();
+	int height = bottom[0]->height();
+	int width = bottom[0]->width();
 
-
-	kernel_local_stats<<<channels, CAFFE_CUDA_NUM_THREADS>>>
-	( num, channels, height * width,
-		static_cast<Dtype>(num * height * width),
-		bottom[0]->gpu_data(),
-		mean_buffer_->mutable_gpu_data(),
-		var_buffer_->mutable_gpu_data());
-
-	caffe_gpu_mul(channels, mean_buffer_->gpu_data(), mean_buffer_->gpu_data(), mean_buffer_->mutable_gpu_sec_diff()); 
-	caffe_gpu_sub(channels, var_buffer_->gpu_data(), mean_buffer_->gpu_sec_diff(), var_buffer_->mutable_gpu_data());
- 	
- 	if (Caffe::number_collect_sample == 0 && Caffe::bn_state() == "learned")
+	if (Caffe::bn_state() == "frozen")
 	{
-		caffe_gpu_set(this->blobs_[0]->count(),Dtype(0),this->blobs_[0]->mutable_gpu_data());
-		caffe_gpu_set(this->blobs_[1]->count(),Dtype(0),this->blobs_[1]->mutable_gpu_data());
-	}
-	if (Caffe::number_collect_sample != -1 && Caffe::bn_state() == "learned")
+		kernel_forward<<<CAFFE_GET_BLOCKS(bottom[0]->count()),CAFFE_CUDA_NUM_THREADS>>>
+		( num, channels, height * width,
+			this->blobs_[0]->gpu_data(), this->blobs_[1]->gpu_data(),
+			bottom[0]->gpu_data(),
+			top[0]->mutable_gpu_data());
+	} 	
+	else
 	{
-		Dtype bn_momentum_ = 1 - Dtype(1)/Dtype(Caffe::number_collect_sample+1);
+		kernel_local_stats<<<channels, CAFFE_CUDA_NUM_THREADS>>>
+		( num, channels, height * width,
+			static_cast<Dtype>(num * height * width),
+			bottom[0]->gpu_data(),
+			mean_buffer_->mutable_gpu_data(),
+			var_buffer_->mutable_gpu_data());
+
+		caffe_gpu_mul(channels, mean_buffer_->gpu_data(), mean_buffer_->gpu_data(), mean_buffer_->mutable_gpu_sec_diff()); 
+		caffe_gpu_sub(channels, var_buffer_->gpu_data(), mean_buffer_->gpu_sec_diff(), var_buffer_->mutable_gpu_data());
+	 	
+	 	if (Caffe::number_collect_sample == 0 && Caffe::bn_state() == "learned")
+		{
+			caffe_gpu_set(this->blobs_[0]->count(),Dtype(0),this->blobs_[0]->mutable_gpu_data());
+			caffe_gpu_set(this->blobs_[1]->count(),Dtype(0),this->blobs_[1]->mutable_gpu_data());
+		}
+		
+		Dtype factor;
+		if (Caffe::number_collect_sample == -1)
+			factor = 0.01;
+		else 
+			factor = Dtype(1)/Dtype(Caffe::number_collect_sample+1);
+			
 		caffe_gpu_axpby(mean_buffer_->count(),
-      Dtype(1) - bn_momentum_, mean_buffer_->gpu_data(),
-      bn_momentum_, this->blobs_[0]->mutable_gpu_data());
+	    factor, mean_buffer_->gpu_data(),
+	    1-factor, this->blobs_[0]->mutable_gpu_data());
 		caffe_gpu_axpby(var_buffer_->count(),
-	    Dtype(1) - bn_momentum_, var_buffer_->gpu_data(),
-	    bn_momentum_, this->blobs_[1]->mutable_gpu_data());
+		  factor, var_buffer_->gpu_data(),
+		  1-factor, this->blobs_[1]->mutable_gpu_data());
+
+		kernel_forward<<<CAFFE_GET_BLOCKS(bottom[0]->count()),CAFFE_CUDA_NUM_THREADS>>>
+		( num, channels, height * width,
+			mean_buffer_->gpu_data(), var_buffer_->gpu_data(),
+			bottom[0]->gpu_data(),
+			top[0]->mutable_gpu_data());
 	}
- 	
-	kernel_forward<<<CAFFE_GET_BLOCKS(bottom[0]->count()),CAFFE_CUDA_NUM_THREADS>>>
-	( num, channels, height * width,
-		mean_buffer_->gpu_data(), var_buffer_->gpu_data(),
-		bottom[0]->gpu_data(),
-		top[0]->mutable_gpu_data());
 }
 template <typename Dtype>
 void BatchNormLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top, const vector<Blob<Dtype>*>& bottom) 

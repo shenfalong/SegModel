@@ -21,14 +21,13 @@ void InnerProductLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom, c
 	caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasTrans, num, num_output, channels*height*width, 
 												(Dtype)1., bottom_data, weight, 
 												(Dtype)0., top_data);
-												
+									
 	if (this->layer_param_.inner_product_param().bias_term())
 	{
 	  caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, num, num_output, 1, 
 	  										(Dtype)1., bias_multiplier_.gpu_data(), this->blobs_[1]->gpu_data(), 
 	  										(Dtype)1., top_data);
-	}  				
-				 
+	}  					  
 }
 
 template <typename Dtype>

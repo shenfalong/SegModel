@@ -122,7 +122,30 @@ static __global__ void kernel_backward_bottom(
 template <typename Dtype>
 void ParallelBatchNormLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) 
 {
-
+	if (Caffe::number_collect_sample != -1)
+	{
+		CHECK_EQ(this->parallel_blobs_.size(),4*NGPUS);
+		if (Caffe::number_collect_sample == 0)
+		{
+			caffe_gpu_set(this->blobs_[2]->count(),Dtype(0),this->blobs_[2]->mutable_gpu_data());
+			caffe_gpu_set(this->blobs_[3]->count(),Dtype(0),this->blobs_[3]->mutable_gpu_data());
+		}		
+		CUDA_SYNCHRONIZE;
+		for (int i = 0; i < NGPUS; i++) 
+		{  	
+			CUDA_CHECK(cudaSetDevice(Caffe::GPUs[i]));
+			ncclBcast((void *)this->parallel_blobs_[2*NGPUS+i]->mutable_gpu_data(),this->parallel_blobs_[2*NGPUS+i]->count(),
+	 																		ncclFloat,0,Caffe::comms(i),Caffe::stream(i));			
+		}		
+		CUDA_SYNCHRONIZE;
+		for (int i = 0; i < NGPUS; i++) 
+		{  	
+			CUDA_CHECK(cudaSetDevice(Caffe::GPUs[i]));
+			ncclBcast((void *)this->parallel_blobs_[3*NGPUS+i]->mutable_gpu_data(),this->parallel_blobs_[3*NGPUS+i]->count(),
+	 																		ncclFloat,0,Caffe::comms(i),Caffe::stream(i));			
+		}		
+		CUDA_SYNCHRONIZE;
+	}	 
 #if 0
 	for (int i = 0; i < bottom.size(); ++i) 
   {  	
@@ -199,17 +222,21 @@ void ParallelBatchNormLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bott
 	}
 	if (Caffe::number_collect_sample != -1 && Caffe::bn_state() == "learned")
 	{
-		Dtype bn_momentum_ = 1 - Dtype(1)/Dtype(Caffe::number_collect_sample+1);
+		Dtype factor;
+		if (Caffe::number_collect_sample == -1)
+			factor = 0.01;
+		else 
+			factor = Dtype(1)/Dtype(Caffe::number_collect_sample+1);
 		
 		for(int i=0;i<NGPUS;i++)
 		{ 
 			CUDA_CHECK(cudaSetDevice(Caffe::GPUs[i]));	
 			caffe_gpu_axpby(parallel_mean_buffer_[i]->count(),
-	      Dtype(1) - bn_momentum_, parallel_mean_buffer_[i]->gpu_data(),
-	      bn_momentum_, this->parallel_blobs_[2*NGPUS+i]->mutable_gpu_data());
+	      factor, parallel_mean_buffer_[i]->gpu_data(),
+	      1-factor, this->parallel_blobs_[2*NGPUS+i]->mutable_gpu_data());
 			caffe_gpu_axpby(parallel_var_buffer_[i]->count(),
-		    Dtype(1) - bn_momentum_, parallel_var_buffer_[i]->gpu_data(),
-		    bn_momentum_, this->parallel_blobs_[3*NGPUS+i]->mutable_gpu_data());
+		    factor, parallel_var_buffer_[i]->gpu_data(),
+		    1-factor, this->parallel_blobs_[3*NGPUS+i]->mutable_gpu_data());
 		}
 	}
 
@@ -230,7 +257,30 @@ void ParallelBatchNormLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bott
 			top[i]->mutable_gpu_data()
 		);
 	}
-	CUDA_POST_KERNEL_CHECK;					
+	CUDA_POST_KERNEL_CHECK;			
+	
+
+	if (Caffe::number_collect_sample != -1)
+	{
+		CUDA_SYNCHRONIZE;
+		for(int i=0;i<NGPUS;i++)
+		{ 
+			CUDA_CHECK(cudaSetDevice(Caffe::GPUs[i]));
+			ncclReduce( this->parallel_blobs_[2*NGPUS+i]->gpu_data(),this->parallel_blobs_[2*NGPUS+i]->mutable_gpu_data(),
+					this->parallel_blobs_[2*NGPUS+i]->count(), ncclFloat,ncclSum,0,Caffe::comms(i),Caffe::stream(i));
+		}
+		CUDA_SYNCHRONIZE;
+		for(int i=0;i<NGPUS;i++)
+		{ 
+			CUDA_CHECK(cudaSetDevice(Caffe::GPUs[i]));
+			ncclReduce( this->parallel_blobs_[3*NGPUS+i]->gpu_data(),this->parallel_blobs_[3*NGPUS+i]->mutable_gpu_data(),
+					this->parallel_blobs_[3*NGPUS+i]->count(), ncclFloat,ncclSum,0,Caffe::comms(i),Caffe::stream(i));
+		}
+		CUDA_SYNCHRONIZE;
+		caffe_gpu_scal(this->blobs_[2]->count(),Dtype(1)/Dtype(NGPUS),this->blobs_[2]->mutable_gpu_data());
+		caffe_gpu_scal(this->blobs_[3]->count(),Dtype(1)/Dtype(NGPUS),this->blobs_[3]->mutable_gpu_data());	
+		CUDA_SYNCHRONIZE;
+	}			
 }
 
 template <typename Dtype>

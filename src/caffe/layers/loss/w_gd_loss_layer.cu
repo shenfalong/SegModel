@@ -151,7 +151,7 @@ void WGdLossLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom, const 
 		Dtype count_d;
 		caffe_gpu_asum(count_.count()/2,count_.gpu_data()+count_.count()/2,&count_d);	
 		
-		top[0]->mutable_cpu_data()[0] = loss_d/max(count_d,Dtype(1)) - loss_g/max(count_g,Dtype(1));
+		top[0]->mutable_cpu_data()[0] = loss_d/max(count_d,Dtype(1))- loss_g/max(count_g,Dtype(1));
 	}
 	else
 	{

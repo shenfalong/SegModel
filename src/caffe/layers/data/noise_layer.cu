@@ -11,7 +11,8 @@ template <typename Dtype>
 void NoiseLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) 
 {
 		
-	caffe_rng_uniform<Dtype>(top[0]->count(), Dtype(-1), Dtype(1), top[0]->mutable_cpu_data());
+	//caffe_rng_uniform<Dtype>(top[0]->count(), Dtype(-1), Dtype(1), top[0]->mutable_cpu_data());
+	caffe_rng_gaussian<Dtype>(top[0]->count(), Dtype(0), Dtype(1), top[0]->mutable_cpu_data());
 	if (top.size() > 1)
 	{
 		for (int i=0;i<top[1]->count();i++)

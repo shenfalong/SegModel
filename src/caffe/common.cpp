@@ -92,10 +92,13 @@ Caffe::Caffe()
       CUDA_CHECK(cudaSetDevice(Caffe::GPUs[i]));
      	
      	CUDA_CHECK(cudaStreamCreate(&stream_[i])); 
+     	
 			CUDNN_CHECK(cudnnCreate(&cudnn_handle_[i]));  
 
 			cublasCreate(&cublas_handle_[i]);
-		
+			
+			cublasSetStream(cublas_handle_[i],stream_[i]);
+			
 			curandCreateGenerator(&curand_generator_[i], CURAND_RNG_PSEUDO_DEFAULT);
 			curandSetPseudoRandomGeneratorSeed(curand_generator_[i], cluster_seedgen());	
     }

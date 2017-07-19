@@ -68,13 +68,26 @@ class MSRAFiller : public Filler<Dtype>
     CHECK(blob->count());
     int fan_in = blob->count() / blob->num();
     int fan_out = blob->count() / blob->channels();
-    Dtype n = fan_in;  // default to fan_in
-    if (this->filler_param_.variance_norm() == "average") 
-      n = (fan_in + fan_out) / Dtype(2);
-    else if (this->filler_param_.variance_norm() == "fan_out") 
-      n = fan_out;
+   
+    Dtype std = sqrt(Dtype(4) / Dtype(fan_in + fan_out));
+   // caffe_rng_gaussian<Dtype>(blob->count(), Dtype(0), std, blob->mutable_cpu_data());
+   caffe_rng_uniform<Dtype>(blob->count(), -std*sqrt(3), std*sqrt(3), blob->mutable_cpu_data());
+   
+  }
+};
 
-    Dtype std = sqrt(Dtype(2) / n);
+template <typename Dtype>
+class GlorotFiller : public Filler<Dtype> 
+{
+ public:
+  explicit GlorotFiller(const FillerParameter& param) : Filler<Dtype>(param) 
+  {}
+  virtual void Fill(Blob<Dtype>* blob) 
+  {
+    CHECK(blob->count());
+    int fan_in = blob->count() / blob->num();
+    int fan_out = blob->count() / blob->channels();
+    Dtype std = sqrt(Dtype(2) / Dtype(fan_in + fan_out));
    // caffe_rng_gaussian<Dtype>(blob->count(), Dtype(0), std, blob->mutable_cpu_data());
    caffe_rng_uniform<Dtype>(blob->count(), -std*sqrt(3), std*sqrt(3), blob->mutable_cpu_data());
   }
@@ -89,7 +102,9 @@ class GaussianFiller : public Filler<Dtype> {
   {
     Dtype* data = blob->mutable_cpu_data();
     CHECK(blob->count());
-    caffe_rng_gaussian<Dtype>(blob->count(), Dtype(this->filler_param_.mean()), Dtype(this->filler_param_.std()), blob->mutable_cpu_data());
+    //caffe_rng_gaussian<Dtype>(blob->count(), Dtype(this->filler_param_.mean()), Dtype(this->filler_param_.std()), blob->mutable_cpu_data());
+    Dtype std = this->filler_param_.std();
+    caffe_rng_uniform<Dtype>(blob->count(), -std*sqrt(3), std*sqrt(3), blob->mutable_cpu_data());
   }
 };
 
@@ -141,6 +156,8 @@ Filler<Dtype>* GetFiller(const FillerParameter& param) {
     return new PottsFiller<Dtype>(param);  
   else if (type == "gaussian") 
     return new GaussianFiller<Dtype>(param);
+  else if (type == "glorot") 
+    return new GlorotFiller<Dtype>(param);
   else 
     CHECK(false) << "Unknown filler name: " << param.type();
   return (Filler<Dtype>*)(NULL);

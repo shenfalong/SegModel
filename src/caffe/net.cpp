@@ -15,11 +15,21 @@ using std::map;
 using std::set;
 
 namespace caffe {
+#if 0
+template <typename Dtype>
+int Net<Dtype>::adam_iter_ = 0;
+template <typename Dtype>
+Dtype Net<Dtype>::momentum_power_ = -1;
+template <typename Dtype>
+Dtype Net<Dtype>::momentum2_power_ = -1;
+#endif 
 
 template <typename Dtype>
 Net<Dtype>::Net(const NetParameter& param, const vector<shared_ptr<Blob<Dtype> > > net_input_blobs, const vector<string> net_input_blob_names):param_(param)
 {
 	adam_iter_ = 0;
+	momentum_power_ = -1;
+	momentum2_power_ = -1;
 	
   if (Caffe::workspace_.size() == 0)
   {
@@ -305,7 +315,8 @@ Dtype Net<Dtype>::Forward()
     /*------------------------------------------------------------------------------*/   		
     loss += layers_[i]->Forward(bottom_vecs_[i], top_vecs_[i]);  
   }
-  
+  //if (Caffe::gan_type() == "train_gnet")
+  // 	LOG(FATAL)<<"--------------";
   return loss;
 }
 
@@ -539,6 +550,11 @@ void Net<Dtype>::Update(int iter, int max_iter, bool display)
 	}
 	else if (optimizer_.type() == "Adam")
 	{			
+		if (momentum_power_ == -1)
+			momentum_power_ = optimizer_.momentum();
+		if (momentum2_power_ == -1)
+			momentum2_power_ = optimizer_.momentum2();
+				
 		for (int i = 0; i < layers_.size(); i++)
 			for (int j = 0;j < layers_[i]->blobs().size();j++)
 			{
@@ -549,13 +565,15 @@ void Net<Dtype>::Update(int iter, int max_iter, bool display)
 				Blob<Dtype>* first_moment = layers_[i]->first_moment()[j].get(); 
 				Blob<Dtype>* second_moment = layers_[i]->second_moment()[j].get(); 
 				
-				const Dtype correction = std::sqrt(Dtype(1) - std::pow(Dtype(optimizer_.momentum2()), adam_iter_ + 1)) / (Dtype(1.) - std::pow(optimizer_.momentum(), adam_iter_ + 1));
+				const Dtype correction = std::sqrt(Dtype(1) - momentum2_power_) / (Dtype(1.) - momentum_power_);
 				adam_update_gpu(param_blob->count(), param_blob->mutable_gpu_diff(),
 					first_moment->mutable_gpu_data(), second_moment->mutable_gpu_data(), Dtype(optimizer_.momentum()), 
 					Dtype(optimizer_.momentum2()), Dtype(optimizer_.delta()), correction);     
 				caffe_gpu_add(param_blob->count(), Dtype(1), param_blob->gpu_data(), -Dtype(rate *local_lr), param_blob->gpu_diff(),
 							        param_blob->mutable_gpu_data());		  
-			}      
+			}   
+		momentum_power_ *= optimizer_.momentum();   
+		momentum2_power_ *= optimizer_.momentum2();  
 		adam_iter_++;
 	}	
 	else
@@ -574,14 +592,11 @@ void Net<Dtype>::BcastData()
 				{
 					CUDA_CHECK(cudaSetDevice(Caffe::GPUs[k]));
 					ncclBcast((void *)layers_[i]->parallel_blobs()[j*NGPUS+k]->mutable_gpu_data(),layers_[i]->parallel_blobs()[j*NGPUS+k]->count(),
-															ncclFloat,0,Caffe::comms(k),Caffe::stream(k));			
+															ncclFloat,0,Caffe::comms(k),Caffe::stream(k));		
 				}
-				CUDA_SYNCHRONIZE;	
+				CUDA_SYNCHRONIZE;
 			}
-		//for (int i = 0; i < layers_.size(); i++)
-		//	for (int j = 0;j < layers_[i]->blobs().size();j++)
-		//		for (int k=0; k<layers_[i]->blobs()[j]->count();k++)
-		//			CHECK_EQ(layers_[i]->parallel_blobs()[j*NGPUS+0]->cpu_data()[k],layers_[i]->parallel_blobs()[j*NGPUS+2]->cpu_data()[k]);				
+					
 	}
 }
 template <typename Dtype>
@@ -641,7 +656,6 @@ void Net<Dtype>::ToProto(NetParameter* param, bool write_diff)
 template <typename Dtype>
 void Net<Dtype>::CopyTrainedLayersFrom(const NetParameter& param)
 {
-
   vector<bool> layer_used_flag(param.layer_size(), false);
   LOG(INFO)<<"............................... there are "<<param.layer_size()<<"..........in this model...................";
   for (int i = 0; i < layer_names_.size();i++)
@@ -707,7 +721,7 @@ void Net<Dtype>::CopyTrainedLayersFrom(const NetParameter& param)
     if (!layer_used_flag[i] && param.layer(i).blobs_size()) {
       LOG(INFO) << "Ignore source layer " << param.layer(i).name();
     }
- 	}
+ 	}	
 }
 //------------------------------------------------------------------------------------------
 //------------------------------------------------------
@@ -733,6 +747,7 @@ void Net<Dtype>::StateToProto(NetState* state)
 template <typename Dtype>
 void Net<Dtype>::RestoreState(const NetState state) 
 {
+
 	adam_iter_ = state.adam_iter();
 	for (int i = 0; i < layers_.size(); i++)
 	{

@@ -31,7 +31,18 @@ void LambdaLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, const ve
 		}
 		all_layer_[i]->LayerSetUp(unary_bottom_vec_[i], top);
 	}
-
+	
+	int all_index = 0;
+	for (int layer_index_=0;layer_index_<all_layer_.size();layer_index_++)
+	{
+		for (int i_index=0;i_index<all_layer_[layer_index_]->blobs().size();i_index++)
+		{
+			this->lr_mult()[all_index] = all_layer_[layer_index_]->lr_mult()[i_index];
+			this->decay_mult()[all_index] = all_layer_[layer_index_]->decay_mult()[i_index];
+			this->blobs()[all_index] = all_layer_[layer_index_]->blobs()[i_index];
+			all_index++;
+		}
+	}
 }
 
 template <typename Dtype>
@@ -52,11 +63,8 @@ void LambdaLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, const vecto
 
 	this->layer_param_.mutable_include()->set_loss_weight(this->layer_param_.branch(layer_index_).include().loss_weight());
 	this->layer_param_.mutable_include()->set_sec_loss_weight(this->layer_param_.branch(layer_index_).include().sec_loss_weight());
-
+	this->layer_param_.set_type(this->layer_param_.branch(layer_index_).type());
 	
-	this->lr_mult() = all_layer_[layer_index_]->lr_mult();
-	this->decay_mult() = all_layer_[layer_index_]->decay_mult();
-	this->blobs_ = all_layer_[layer_index_]->blobs();
 
 	
 	all_layer_[layer_index_]->Reshape(unary_bottom_vec_[layer_index_], top); 

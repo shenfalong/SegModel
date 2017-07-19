@@ -61,7 +61,11 @@ void InnerProductLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, const
 {
   
   int num = bottom[0]->num();
-  
+  if (this->layer_param_.inner_product_param().bias_term())
+  {
+    bias_multiplier_.Reshape(num,1,1,1);
+    caffe_set(num, Dtype(1), bias_multiplier_.mutable_cpu_data());
+  }
   top[0]->Reshape(num,num_output,1,1);
 }
 

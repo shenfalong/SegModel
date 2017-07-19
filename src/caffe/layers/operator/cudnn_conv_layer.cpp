@@ -135,7 +135,9 @@ void CuDNNConvolutionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, c
 //-----------------------------------------------------------------------------------------	
 	myworkspace_[0]->Reshape(workspace_fwd_sizes_/sizeof(Dtype)+1,1,1,1);
  	myworkspace_[0]->Reshape(workspace_bwd_data_sizes_/sizeof(Dtype)+1,1,1,1);
- 	myworkspace_[0]->Reshape(workspace_bwd_filter_sizes_/sizeof(Dtype)+1,1,1,1);    
+ 	myworkspace_[0]->Reshape(workspace_bwd_filter_sizes_/sizeof(Dtype)+1,1,1,1);   
+ 	myworkspace_[0]->gpu_data(); 
+ 	myworkspace_[0]->gpu_diff(); 
 //-----------------------------------------------------------------------------------------	   
        
 }

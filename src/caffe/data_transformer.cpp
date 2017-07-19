@@ -187,7 +187,8 @@ void DataTransformer<Dtype>::Transformsimple(const cv::Mat& cv_img, Blob<Dtype>*
 			{   
 			  top_index = (c * height + h) * width + w;
 			  //pay attention to the format of caffe_rng_rand()!!!
-				transformed_data[top_index] = (static_cast<Dtype>(ptr[img_index++] + Rand(3)-1) - Dtype(127.5))/Dtype(127.5);
+				transformed_data[top_index] = (static_cast<Dtype>(ptr[img_index++]) + Dtype(Rand(1000))/Dtype(1000) - Dtype(127.5))/Dtype(127.5);
+				//
 			}
   } 
 }

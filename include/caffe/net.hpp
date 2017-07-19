@@ -95,7 +95,8 @@ class Net
 	
 	vector<bool> flow_flag;
 	int adam_iter_;
-
+	Dtype  momentum_power_;
+	Dtype momentum2_power_;
 	
   DISABLE_COPY_AND_ASSIGN(Net);
 };

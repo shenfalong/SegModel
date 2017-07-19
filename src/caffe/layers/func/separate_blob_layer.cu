@@ -44,6 +44,13 @@ void SeparateBlobLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top, con
 template <typename Dtype>
 void SeparateBlobLayer<Dtype>::SecForward_gpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) 
 {
+	int num = bottom[0]->num();
+  int channels = bottom[0]->channels();
+  int height = bottom[0]->height();
+  int width = bottom[0]->width();
+  
+	caffe_copy(top[0]->count(),bottom[0]->gpu_sec_diff()                         ,top[0]->mutable_gpu_sec_diff());
+	caffe_copy(top[1]->count(),bottom[0]->gpu_sec_diff()+bottom[0]->offset(num/2),top[1]->mutable_gpu_sec_diff());
 }
 INSTANTIATE_LAYER_GPU_FUNCS(SeparateBlobLayer);
 }  // namespace caffe

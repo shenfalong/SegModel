@@ -130,9 +130,10 @@ void SoftmaxWithLossLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom
   else
   	top[0]->mutable_cpu_data()[0] = 0; 	 	
   
-  	
+  
   if (Solver<Dtype>::iter() % 100 == 0 && Caffe::gan_type() == "train_dnet")
   	LOG(INFO)<<"softmax_loss = "<<top[0]->cpu_data()[0];
+ 
 }
 
 template <typename Dtype>
@@ -181,7 +182,7 @@ void SoftmaxWithLossLayer<Dtype>::SecForward_gpu(const vector<Blob<Dtype>*>& bot
 	bottom[0]->mutable_gpu_diff());
 	
 	
-	const Dtype loss_weight = top[0]->cpu_diff()[0] / (num*height*width);
+	const Dtype loss_weight = top[0]->cpu_diff()[0] / Dtype(num*height*width);
 	caffe_gpu_scal(bottom[0]->count(), loss_weight, bottom[0]->mutable_gpu_diff()); 
 }
 INSTANTIATE_LAYER_GPU_FUNCS(SoftmaxWithLossLayer);

@@ -90,8 +90,8 @@ void SolverSecGAN<Dtype>::Solve(const char* all_state_file)
     d_net_->ClearParamDiffs();    
     Dtype cur_loss = 0;
 //-----------------------------------------------		
-		Caffe::set_gan_type("train_dnet");		
-		g_net_->BcastData();	
+		Caffe::set_gan_type("train_dnet");	
+		g_net_->BcastData();		
 		for(int i_critic = 0;i_critic<5;i_critic++)
 		{
 			g_net_->Forward();
@@ -111,6 +111,8 @@ void SolverSecGAN<Dtype>::Solve(const char* all_state_file)
 
 		
 			//-------------------gradient penalty-----------------
+			g_net_->Forward();
+			
 			for (int ig = 0;ig < g_net_->output_blobs().size(); ig++)
 			{
 				CUDA_CHECK(cudaSetDevice(Caffe::GPUs[ig%NGPUS]));
@@ -130,16 +132,14 @@ void SolverSecGAN<Dtype>::Solve(const char* all_state_file)
 			
 			d_net_->ReduceDiff();
 			d_net_->Update(this->iter_, param_.max_iter(), this->iter_ % param_.display() == 0 && i_critic == 0);
-			d_net_->ClearParamDiffs();  
-
-			d_loss.push_back(cur_loss);
+			d_net_->ClearParamDiffs();  				
 		}
+		d_loss.push_back(cur_loss);
 //----------------------------------------------- 	
 		Caffe::set_gan_type("train_gnet");		
-	 	
-		//-----unecessary-------
+	
 		g_net_->Forward();
-		
+	
 		for (int ig = 0;ig < g_net_->output_blobs().size(); ig++)
 		{	
 			CUDA_CHECK(cudaSetDevice(Caffe::GPUs[ig%NGPUS]));
@@ -147,29 +147,29 @@ void SolverSecGAN<Dtype>::Solve(const char* all_state_file)
 			caffe_copy(g_net_->output_blobs()[ig]->count(),g_net_->output_blobs()[ig]->gpu_data(),d_net_->input_blobs()[ig]->mutable_gpu_data());
 		}
 		CUDA_CHECK(cudaSetDevice(Caffe::GPUs[0]));
-			
 		
+	
 		d_net_->BcastData();
 		cur_loss = d_net_->Forward();
-		
+		Caffe::set_frozen_param(true);
 		d_net_->Backward();
+		Caffe::set_frozen_param(false);
 		//-----unecessary-------
-		
+	
 		for (int ig = 0;ig < g_net_->output_blobs().size(); ig++)
 		{
 			CUDA_CHECK(cudaSetDevice(Caffe::GPUs[ig%NGPUS]));
 			caffe_copy(g_net_->output_blobs()[ig]->count(),d_net_->input_blobs()[ig]->gpu_diff(),g_net_->output_blobs()[ig]->mutable_gpu_diff());
 		}
 		CUDA_CHECK(cudaSetDevice(Caffe::GPUs[0]));
-	
+
 		g_net_->Backward();
-		g_net_->ReduceDiff();
-
-		g_net_->Update(this->iter_, param_.max_iter(), false);
-		g_net_->ClearParamDiffs();   
-		d_net_->ClearParamDiffs();   
-
 		g_loss.push_back(cur_loss);
+	
+		
+		g_net_->ReduceDiff();
+		g_net_->Update(this->iter_, param_.max_iter(), false);
+		g_net_->ClearParamDiffs();     
 //-----------------------------------------------
     ++this->iter_;
     
@@ -205,7 +205,7 @@ void SolverSecGAN<Dtype>::Solve(const char* all_state_file)
 template <typename Dtype>
 void SolverSecGAN<Dtype>::dispaly_loss(std::vector<Dtype> g_loss,std::vector<Dtype> d_loss) 
 {
-	LOG(INFO) << "Iteration " << this->iter_ << " ------------";
+	//LOG(INFO) << "Iteration " << this->iter_ << " ------------";
 	Dtype g_sum = 0;
 	for (int i=0;i<g_loss.size();i++)
 		g_sum += g_loss[i];

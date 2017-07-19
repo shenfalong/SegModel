@@ -123,6 +123,7 @@ inline void Layer<Dtype>::SecForward(const vector<Blob<Dtype>*>& bottom, const v
 	
 	if (sec_loss_weight > 0 && Caffe::second_pass())
 	{
+		CHECK_EQ(Caffe::GPUs.size(),top.size());	
 		compute_sec_loss(top,sec_loss_weight / Dtype(top.size()));
 	}
 	else

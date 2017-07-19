@@ -73,6 +73,8 @@ void ParallelLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, const vec
 	
 	//lambda layer has modified layer_param_;
 	this->layer_param_ = unary_layer_[0]->layer_param();
+	if (this->layer_param_.type() == "Lambda")
+		LOG(FATAL)<<"lambda layer should be instanced !!";
 }
 template <typename Dtype>
 ParallelLayer<Dtype>::~ParallelLayer() 
