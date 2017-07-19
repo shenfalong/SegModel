@@ -13,14 +13,15 @@ This repository is for [Semantic Segmentation via Structured Patch Prediction, C
 
 Installation
 ----
-This library is based on [Caffe](https://github.com/BVLC/caffe). [CuDNN](https://developer.nvidia.com/cudnn) and [NCCL](https://github.com/NVIDIA/nccl) are required.
+This library is based on [Caffe](https://github.com/BVLC/caffe). [CuDNN](https://developer.nvidia.com/cudnn) and [NCCL](https://github.com/NVIDIA/nccl) are required. Please follow
+the installation instruction of [Caffe](https://github.com/BVLC/caffe).
 
 
-New Features
+Include
 ----
-*Imlplementation in this paper.
-*
-*
+* Imlplementation details of the training code and test code introduced in the [paper](http://openaccess.thecvf.com/content_cvpr_2017/papers/Shen_Semantic_Segmentation_via_CVPR_2017_paper.pdf).
+* GPU Memory reuse by setting different flow for each data blob. 
+* Multi-GPU efficient running.
 
 Inference
 ----
@@ -30,13 +31,18 @@ Training
 
 Datasets
 ----
+* Pascal VOC 2012
+
+* Cityscapes
+
+* MIT Secene Parsing 
 
 
 Pretrained Model
 ----
+* Pascal VOC 2012
 
-Citation
-----
+* Cityscapes
 
-
+* MIT Secene Parsing 
 
