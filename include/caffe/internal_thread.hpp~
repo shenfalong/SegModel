@@ -1,0 +1,35 @@
+#ifndef CAFFE_INTERNAL_THREAD_HPP_
+#define CAFFE_INTERNAL_THREAD_HPP_
+
+#include "caffe/common.hpp"
+
+/**
+ Forward declare boost::thread instead of including boost/thread.hpp
+ to avoid a boost/NVCC issues (#1009, #1010) on OSX.
+ */
+namespace boost { class thread; }
+
+namespace caffe {
+
+class InternalThread {
+ public:
+  InternalThread() : thread_() {}
+  virtual ~InternalThread();
+
+
+  bool StartInternalThread();
+
+
+  bool WaitForInternalThreadToExit();
+
+  bool is_started() const;
+
+ protected:
+  virtual void InternalThreadEntry() {}
+
+  shared_ptr<boost::thread> thread_;
+};
+
+}  // namespace caffe
+
+#endif  // CAFFE_INTERNAL_THREAD_HPP_

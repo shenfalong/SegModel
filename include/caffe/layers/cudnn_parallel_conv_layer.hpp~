@@ -1,0 +1,68 @@
+#ifndef CAFFE_CUDNN_PARALLEL_CONV_LAYER_HPP_
+#define CAFFE_CUDNN_PARALLEL_CONV_LAYER_HPP_
+
+#include <vector>
+
+#include "caffe/blob.hpp"
+#include "caffe/layer.hpp"
+#include "caffe/proto/caffe.pb.h"
+#include "caffe/layers/conv_layer.hpp"
+
+
+namespace caffe {
+
+#ifdef USE_CUDNN
+
+template <typename Dtype>
+class CuDNNParallelConvolutionLayer : public ConvolutionLayer<Dtype> 
+{
+ public:
+  explicit CuDNNParallelConvolutionLayer(const LayerParameter& param) : ConvolutionLayer<Dtype>(param), handles_setup_(false) {}
+  virtual ~CuDNNParallelConvolutionLayer();
+  virtual inline const char* type() const { return "CuDNNParallelBatchNorm"; }
+  
+  virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top);
+  virtual void Reshape(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top);
+  virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top);
+  virtual void Backward_cpu(const vector<Blob<Dtype>*>& top, const vector<Blob<Dtype>*>& bottom);
+	virtual void Forward_gpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top);
+  virtual void Backward_gpu(const vector<Blob<Dtype>*>& top, const vector<Blob<Dtype>*>& bottom);
+
+ protected:
+
+	
+  bool handles_setup_;
+//---------------------------------------------------  
+  static vector<cudnnHandle_t*> parallel_handle_;
+  static vector<cudaStream_t*>  parallel_stream_;
+	static size_t workspaceSizeInBytes; 
+	static vector<void *> parallel_workspaceData;
+//---------------------------------------------------  	
+	
+	vector<shared_ptr<Blob<Dtype> > > parallel_blobs_;
+	
+  cudnnConvolutionFwdAlgo_t fwd_algo_;
+  cudnnConvolutionBwdFilterAlgo_t bwd_filter_algo_;
+  cudnnConvolutionBwdDataAlgo_t bwd_data_algo_;
+
+  cudnnTensorDescriptor_t   bottom_descs_, top_descs_;
+  cudnnTensorDescriptor_t   bias_desc_;
+  cudnnFilterDescriptor_t   filter_desc_;
+  cudnnConvolutionDescriptor_t conv_descs_;
+
+
+  size_t workspace_fwd_sizes_;
+  size_t workspace_bwd_data_sizes_;
+  size_t workspace_bwd_filter_sizes_;
+  
+  size_t max_workspace;
+   
+  
+  vector<void **> parallel_workspace;
+  
+};
+#endif
+
+}  // namespace caffe
+
+#endif  // CAFFE_CUDNN_CONV_LAYER_HPP_
