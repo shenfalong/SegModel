@@ -1,0 +1,36 @@
+#include <vector>
+
+#include "caffe/layers/parallel_shen_split_layer.hpp"
+#include "caffe/util/math_functions.hpp"
+
+namespace caffe {
+
+template <typename Dtype>
+void ParallelShenSplitLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
+      const vector<Blob<Dtype>*>& top)
+{}
+
+template <typename Dtype>
+void ParallelShenSplitLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
+      const vector<Blob<Dtype>*>& top) 
+{
+	for(int i = 0;i < bottom.size();i ++)
+		top[i+bottom.size()]->ReshapeLike(*bottom[i]);  
+}
+
+template <typename Dtype>
+void ParallelShenSplitLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top)
+{}
+
+template <typename Dtype>
+void ParallelShenSplitLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
+    const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom)
+{}
+
+#ifdef CPU_ONLY
+STUB_GPU(ParallelShenSplitLayer);
+#endif
+
+INSTANTIATE_CLASS(ParallelShenSplitLayer);
+REGISTER_LAYER_CLASS(ParallelShenSplit);
+}  // namespace caffe

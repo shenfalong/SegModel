@@ -1,0 +1,281 @@
+#include <fstream>  // NOLINT(readability/streams)
+#include <iostream>  // NOLINT(readability/streams)
+#include <string>
+#include <utility>
+#include <vector>
+#include <algorithm>
+
+#include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/highgui/highgui_c.h>
+
+#include "caffe/layers/image_seg_data_layer.hpp"
+#include "caffe/layer.hpp"
+#include "caffe/util/benchmark.hpp"
+#include "caffe/util/io.hpp"
+#include "caffe/util/math_functions.hpp"
+#include "caffe/util/rng.hpp"
+
+
+namespace caffe {
+
+template <typename Dtype>
+void ImageSegDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
+                                              const vector<Blob<Dtype>*>& top)
+{
+  TransformationParameter transform_param = this->layer_param_.transform_param();
+  DataParameter image_data_param    = this->layer_param_.data_param();
+  const int batch_size = image_data_param.batch_size();
+  const int crop_size = transform_param.crop_size();
+
+  // Read the file with filenames and labels
+  const string& source = image_data_param.source();
+  LOG(INFO) << "Opening file " << source;
+  std::ifstream infile(source.c_str());
+
+  string linestr;
+  while (std::getline(infile, linestr))
+  {
+    std::istringstream iss(linestr);
+    string imgfn;
+    iss >> imgfn;
+    string segfn = imgfn;
+    imgfn = "JPEGImages/" + imgfn + ".jpg";
+    lines_.push_back(std::make_pair(imgfn, segfn));
+  }
+
+  if (image_data_param.shuffle()) {
+    // randomly shuffle data
+    LOG(INFO) << "Shuffling data";
+    const unsigned int prefetch_rng_seed = caffe_rng_rand();
+    prefetch_rng_.reset(new Caffe::RNG(prefetch_rng_seed));
+    ShuffleImages();
+  }
+  LOG(INFO) << "A total of " << lines_.size() << " images.";
+  lines_id_ = 0;
+
+
+  if(crop_size == 0)
+  {
+    top[0]->Reshape(1, 3, 224, 224);
+    this->prefetch_data_.Reshape(1, 3, 224, 224);
+    top[1]->Reshape(1, 1, 224, 224);
+    this->prefetch_label_.Reshape(1, 1, 224, 224);
+  }
+  else
+  {
+    top[0]->Reshape(batch_size, 3, crop_size, crop_size);
+    this->prefetch_data_.Reshape(batch_size, 3, crop_size, crop_size);
+    this->transformed_data_.Reshape(1, 3, crop_size, crop_size);
+    
+    top[1]->Reshape(batch_size, 1, crop_size, crop_size);
+    this->prefetch_label_.Reshape(batch_size, 1, crop_size, crop_size);
+    this->transformed_label_.Reshape(1, 1, crop_size, crop_size);
+  }
+  if (top.size() == 3)
+  {
+  
+  }
+}
+// This function is used to create a thread that prefetches the data.
+template <typename Dtype>
+void ImageSegDataLayer<Dtype>::InternalThreadEntry()
+{
+  //new thread treat GPU 0 as default device, so it is necessary to set device in case of
+  //ghost memory
+#ifndef CPU_ONLY
+  CUDA_CHECK(cudaSetDevice(Caffe::GPUs[0]));
+#endif
+
+
+  DataParameter image_data_param    = this->layer_param_.data_param();
+  TransformationParameter transform_param = this->layer_param_.transform_param();
+  const int ignore_label = image_data_param.ignore_label();
+  string root_folder   = image_data_param.root_folder();
+  const bool random_scale = image_data_param.random_scale();
+  const bool random_aspect = image_data_param.random_aspect();
+  const int resolution = image_data_param.resolution();
+  int classes = image_data_param.classes();
+  int batch_size = image_data_param.batch_size();
+  int crop_size = transform_param.crop_size();
+
+
+  const int lines_size = lines_.size();
+
+  for(int item_id=0;item_id < batch_size;item_id++)
+  {
+    std::vector<cv::Mat> cv_img_seg;
+    cv_img_seg.clear();
+
+
+    CHECK_GT(lines_size, lines_id_);
+
+    int img_row, img_col;
+    if(classes == 21)
+    {
+      if(lines_[lines_id_].second[0] != 't' && lines_[lines_id_].second[0] != 'v')
+      {
+        cv_img_seg.push_back(cv::imread(root_folder + "VOCdevkit/VOC2012/" + "JPEGImages/" + lines_[lines_id_].second + ".jpg", CV_LOAD_IMAGE_COLOR));
+        if (!cv_img_seg[0].data) {LOG(FATAL) << "Fail to load img: " << root_folder + lines_[lines_id_].first;}
+        cv_img_seg.push_back(cv::imread(root_folder + "VOCdevkit/VOC2012/" + "SegmentationClass/" + lines_[lines_id_].second + ".png", CV_LOAD_IMAGE_GRAYSCALE));
+        if (!cv_img_seg[1].data) {LOG(FATAL) << "Fail to load seg: " << root_folder + "SegmentationClass/" + lines_[lines_id_].second + ".png";}
+      }
+      else
+      {
+        cv_img_seg.push_back(cv::imread(root_folder + "MSCOCO/coco-master/" + "JPEGImages/" + lines_[lines_id_].second + ".jpg", CV_LOAD_IMAGE_COLOR));
+        if (!cv_img_seg[0].data) {LOG(FATAL) << "Fail to load img: " << root_folder + lines_[lines_id_].first;}
+        cv_img_seg.push_back(cv::imread(root_folder + "MSCOCO/coco-master/" + "SegmentationClass_reduced/" + lines_[lines_id_].second + ".png", CV_LOAD_IMAGE_GRAYSCALE));
+        if (!cv_img_seg[1].data) {LOG(FATAL) << "Fail to load seg: " << root_folder + "SegmentationClass_reduced/" + lines_[lines_id_].second + ".png";}
+      }
+    }
+    else if(classes == 81)
+    {
+      cv_img_seg.push_back(cv::imread(root_folder + "JPEGImages/" + lines_[lines_id_].second + ".jpg", CV_LOAD_IMAGE_COLOR));
+      if (!cv_img_seg[0].data) {LOG(FATAL) << "Fail to load img: " << root_folder + lines_[lines_id_].first;}
+      cv_img_seg.push_back(cv::imread(root_folder + "SegmentationClass/" + lines_[lines_id_].second + ".png", CV_LOAD_IMAGE_GRAYSCALE));
+      if (!cv_img_seg[1].data) {LOG(FATAL) << "Fail to load seg: " << root_folder + "SegmentationClass/" + lines_[lines_id_].second + ".png";}
+    }
+    else if(classes == 60)
+    {
+      cv_img_seg.push_back(cv::imread(root_folder + "JPEGImages/" + lines_[lines_id_].second + ".jpg", CV_LOAD_IMAGE_COLOR));
+      if (!cv_img_seg[0].data) {LOG(FATAL) << "Fail to load img: " << root_folder + lines_[lines_id_].first;}
+      cv_img_seg.push_back(cv::imread(root_folder+"pascal_context/" + "SegmentationClass/" + lines_[lines_id_].second + ".png", CV_LOAD_IMAGE_GRAYSCALE));
+      if (!cv_img_seg[1].data) {LOG(FATAL) << "Fail to load seg: " << root_folder + "SegmentationClass/" + lines_[lines_id_].second + ".png";}
+    }
+    else if(classes == 19)
+    {
+      cv_img_seg.push_back(cv::imread(root_folder + "JPEGImages/" + lines_[lines_id_].second + "_leftImg8bit.png", CV_LOAD_IMAGE_COLOR));
+      if (!cv_img_seg[0].data) {LOG(FATAL) << "Fail to load img: " << root_folder + lines_[lines_id_].first;}
+      cv_img_seg.push_back(cv::imread(root_folder + "SegmentationClass/" + lines_[lines_id_].second + "_gtFine_labelIds.png", CV_LOAD_IMAGE_GRAYSCALE));
+      if (!cv_img_seg[1].data) {LOG(FATAL) << "Fail to load seg: " << root_folder + "SegmentationClass/" + lines_[lines_id_].second + ".png";}
+      //cv::resize(cv_img_seg[0],cv_img_seg[0],cv::Size(1024,512),0,0,CV_INTER_CUBIC);
+      //cv::resize(cv_img_seg[1],cv_img_seg[1],cv::Size(1024,512),0,0,CV_INTER_NN);
+    }
+    else if(classes == 150)
+    {
+      cv_img_seg.push_back(cv::imread(root_folder + "JPEGImages/" + lines_[lines_id_].second + ".jpg", CV_LOAD_IMAGE_COLOR));
+      if (!cv_img_seg[0].data) {LOG(FATAL) << "Fail to load img: " << root_folder + lines_[lines_id_].first;}
+      cv_img_seg.push_back(cv::imread(root_folder + "SegmentationClass/" + lines_[lines_id_].second + ".png", CV_LOAD_IMAGE_GRAYSCALE));
+      if (!cv_img_seg[1].data) {LOG(FATAL) << "Fail to load seg: " << root_folder + "SegmentationClass/" + lines_[lines_id_].second + ".png";}
+    }
+    else
+    {
+      LOG(FATAL)<<"wrong classes";
+    }
+
+
+
+
+    if(random_scale)
+    {
+      int temp = caffe_rng_rand()%200 - 100;
+      Dtype ratio = std::pow(2,Dtype(temp)/100);
+
+      int width = ratio * cv_img_seg[0].cols;
+      int height = ratio * cv_img_seg[0].rows;
+
+      if(random_aspect)
+      {
+        temp = caffe_rng_rand()%40 + 80;
+        Dtype aspect = Dtype(temp) / 100;
+
+        width = ratio * aspect * cv_img_seg[0].cols;
+        height = ratio *aspect * cv_img_seg[0].rows;
+      }
+
+      cv::resize(cv_img_seg[0],cv_img_seg[0],cv::Size(width,height),0,0,CV_INTER_CUBIC);
+      cv::resize(cv_img_seg[1],cv_img_seg[1],cv::Size(width,height),0,0,CV_INTER_NN);
+    }
+
+    int width=cv_img_seg[0].cols;
+    int height=cv_img_seg[0].rows;
+    if(image_data_param.use_resize())
+    {
+      if(width < 224 || height < 224)
+      {
+        if(width < height)
+        {
+          height = 224 / Dtype(width) * Dtype(height);
+          width = 224;
+          cv::resize(cv_img_seg[0],cv_img_seg[0],cv::Size(width,height),0,0,CV_INTER_CUBIC);
+          cv::resize(cv_img_seg[1],cv_img_seg[1],cv::Size(width,height),0,0,CV_INTER_NN);
+        }
+        else
+        {
+          width = 224 / Dtype(height) * Dtype(width);
+          height = 224;
+          cv::resize(cv_img_seg[0],cv_img_seg[0],cv::Size(width,height),0,0,CV_INTER_CUBIC);
+          cv::resize(cv_img_seg[1],cv_img_seg[1],cv::Size(width,height),0,0,CV_INTER_NN);
+        }
+      }
+#if 0
+      if(width > 900 || height > 900)
+      {
+        if(width > height)
+        {
+          height = 900 / Dtype(width) * Dtype(height);
+          width = 900;
+          cv::resize(cv_img_seg[0],cv_img_seg[0],cv::Size(width,height),0,0,CV_INTER_CUBIC);
+          cv::resize(cv_img_seg[1],cv_img_seg[1],cv::Size(width,height),0,0,CV_INTER_NN);
+        }
+        else
+        {
+          width = 900 / Dtype(height) * Dtype(width);
+          height = 900;
+          cv::resize(cv_img_seg[0],cv_img_seg[0],cv::Size(width,height),0,0,CV_INTER_CUBIC);
+          cv::resize(cv_img_seg[1],cv_img_seg[1],cv::Size(width,height),0,0,CV_INTER_NN);
+        }
+      }
+#endif      
+    }	
+    //width = 1524;
+    //height = 1024;
+    //cv::resize(cv_img_seg[0],cv_img_seg[0],cv::Size(width,height),0,0,CV_INTER_CUBIC);
+    //cv::resize(cv_img_seg[1],cv_img_seg[1],cv::Size(width,height),0,0,CV_INTER_NN);
+    
+    if(crop_size == 0)
+    {
+      width=cv_img_seg[0].cols;
+      height=cv_img_seg[0].rows;
+      int pad_width = (resolution - width  % resolution) % resolution;
+      int pad_height = (resolution - height % resolution) % resolution;
+      this->prefetch_data_.Reshape(1, 3, height+pad_height, width+pad_width);
+      this->prefetch_label_.Reshape(1, 1, height+pad_height, width+pad_width);
+      this->data_transformer_->TransformImgAndSeg(cv_img_seg, &(this->prefetch_data_), &(this->prefetch_label_), ignore_label);
+    }
+    else
+    {
+      this->transformed_data_.set_cpu_data(this->prefetch_data_.mutable_cpu_data()+this->prefetch_data_.offset(item_id));
+      this->transformed_label_.set_cpu_data(this->prefetch_label_.mutable_cpu_data()+this->prefetch_label_.offset(item_id));
+      this->data_transformer_->TransformImgAndSeg(cv_img_seg, &(this->transformed_data_), &(this->transformed_label_), ignore_label);    
+    }
+
+
+    lines_id_++;
+    if (lines_id_ >= lines_size)
+    {
+      lines_id_ = 0;
+      if (image_data_param.shuffle())
+        ShuffleImages();
+    }
+  }
+}
+
+template <typename Dtype>
+ImageSegDataLayer<Dtype>::~ImageSegDataLayer<Dtype>() 
+{
+  if (this->thread_.get() != NULL && this->thread_->joinable())
+    this->thread_->join();
+}
+
+template <typename Dtype>
+void ImageSegDataLayer<Dtype>::ShuffleImages() 
+{
+  caffe::rng_t* prefetch_rng = static_cast<caffe::rng_t*>(prefetch_rng_->generator());
+  shuffle(lines_.begin(), lines_.end(), prefetch_rng);
+}
+
+INSTANTIATE_CLASS(ImageSegDataLayer);
+REGISTER_LAYER_CLASS(ImageSegData);
+}  // namespace caffe

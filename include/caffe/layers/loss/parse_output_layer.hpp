@@ -1,0 +1,35 @@
+#ifndef CAFFE_PARSE_OUTPUT_LAYER_HPP_
+#define CAFFE_PARSE_OUTPUT_LAYER_HPP_
+
+#include <vector>
+
+#include "caffe/blob.hpp"
+#include "caffe/layer.hpp"
+#include "caffe/proto/caffe.pb.h"
+
+namespace caffe {
+
+template <typename Dtype>
+class ParseOutputLayer : public Layer<Dtype> 
+{
+ public:
+  explicit ParseOutputLayer(const LayerParameter& param) : Layer<Dtype>(param) {}
+  virtual inline const char* type() const { return "ParseOutput"; }
+  
+  virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top);
+  virtual void Reshape(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top);
+
+
+	
+	virtual void Forward_gpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top);
+  virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,const vector<Blob<Dtype>*>& bottom);
+  virtual void SecForward_gpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top);
+ protected:
+  bool out_max_val_;
+
+  // max_prob_ is used to store the maximum probability value
+  Blob<Dtype> max_prob_;
+};
+}
+
+#endif  // CAFFE_LOSS_LAYER_HPP_

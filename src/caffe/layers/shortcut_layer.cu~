@@ -1,0 +1,78 @@
+#include <vector>
+
+#include "caffe/layers/shortcut_layer.hpp"
+#include "caffe/util/math_functions.hpp"
+
+namespace caffe {
+
+template <typename Dtype>
+void ShortcutLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) 
+{	
+	this->blobs_[0]->mutable_cpu_data()[0] = std::max(this->blobs_[0]->cpu_data()[0],-Dtype(1)); 
+	this->blobs_[0]->mutable_cpu_data()[0] = std::min(this->blobs_[0]->cpu_data()[0],Dtype(1));
+	
+	
+	multiplier = this->blobs_[0]->cpu_data()[0];
+	
+	if (Caffe::phase() == TRAIN)
+	{	
+		caffe_rng_bernoulli(1, Dtype(1. - dropout_ratio_), &mask);
+		multiplier = multiplier * mask * 1. / (1. - dropout_ratio_); ; 
+	}
+	
+	caffe_gpu_add(bottom[0]->count(),Dtype(1),bottom[0]->gpu_data(), multiplier,bottom[1]->gpu_data(),top[0]->mutable_gpu_data());						
+}
+
+template <typename Dtype>
+void ShortcutLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top, const vector<Blob<Dtype>*>& bottom) 
+{
+	int num = bottom[0]->num();
+	int channels = bottom[0]->channels();
+	int height = bottom[0]->height();
+	int width = bottom[0]->width();
+
+//---------------------------------------------------------------
+	lambda->Reshape(num, channels, height, width);
+	all_one->Reshape(num, channels, height, width);
+  caffe_gpu_set(all_one->count(),Dtype(1.0),all_one->mutable_gpu_data());
+//---------------------------------------------------------------
+
+	caffe_copy(bottom[0]->count(),top[0]->gpu_diff(),bottom[0]->mutable_gpu_diff()); 
+	
+	caffe_copy(top[0]->count(),top[0]->gpu_diff(),bottom[1]->mutable_gpu_diff());
+	caffe_gpu_scal(bottom[1]->count(), multiplier,bottom[1]->mutable_gpu_diff());
+	
+	
+	if (mask == 1)
+	{
+		caffe_gpu_mul(top[0]->count(),top[0]->gpu_diff(),bottom[1]->gpu_data(),lambda->mutable_gpu_data());
+		
+		Dtype sum_diff;
+		caffe_gpu_dot(lambda->count(),lambda->gpu_data(),all_one->gpu_data(),&sum_diff);	
+		
+		this->blobs_[0]->mutable_cpu_diff()[0] += sum_diff;			
+	}		
+	
+	//caffe_gpu_powx<Dtype>(dim, bottom_data, Dtype(2), buffer_data);
+    
+  // compute norm
+  //caffe_gpu_gemv<Dtype>(CblasTrans, channels, spatial_dim, 
+  //											Dtype(1), buffer_data, sum_channel_multiplier, 
+  //											Dtype(1), norm_data);
+  //caffe_gpu_powx<Dtype>(spatial_dim, norm_data, Dtype(0.5), norm_data);
+	
+	caffe_gpu_add(bottom[1]->count(),Dtype(1),bottom[1]->gpu_diff(),Dtype(0.00001),bottom[1]->gpu_data(),bottom[1]->mutable_gpu_diff());
+	
+	
+#if 0			
+	if (this->blobs_[0]->cpu_data()[0] > 0)
+		this->blobs_[0]->mutable_cpu_diff()[0] +=  0.0005;
+	else if (this->blobs_[0]->cpu_data()[0] < 0)
+	  this->blobs_[0]->mutable_cpu_diff()[0] += -0.0005;
+	else
+		this->blobs_[0]->mutable_cpu_diff()[0] +=  0;
+#endif	
+}
+
+INSTANTIATE_LAYER_GPU_FUNCS(ShortcutLayer);
+}  // namespace caffe
