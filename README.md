@@ -30,10 +30,10 @@ Inference
 ----
 Matlab code. Please excute the scripts in Matlab folder.
 
-* Cityscapes pretrained models\\
-    [model 0](http://host.robots.ox.ac.uk/pascal/VOC/)\\
-    [model 1](http://host.robots.ox.ac.uk/pascal/VOC/)\\
-    [model 2](http://host.robots.ox.ac.uk/pascal/VOC/)\\
+* Cityscapes pretrained models</br>
+    [model 0](http://host.robots.ox.ac.uk/pascal/VOC/)</br>
+    [model 1](http://host.robots.ox.ac.uk/pascal/VOC/)</br>
+    [model 2](http://host.robots.ox.ac.uk/pascal/VOC/)</br>
 
 Training (Script comming soon.)
 ----
