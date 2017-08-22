@@ -26,17 +26,15 @@ including training code and test code.
 * Support multi-batch normalization.
 * Support training generative adversial networks.
 
-Inference
+Scripts
 ----
-Matlab code. Please excute the scripts in Matlab folder.
+Matlab code. Please execute the scripts in Matlab folder.
 
 * Cityscapes pretrained models</br>
-    [model 0](http://host.robots.ox.ac.uk/pascal/VOC/)</br>
-    [model 1](http://host.robots.ox.ac.uk/pascal/VOC/)</br>
-    [model 2](http://host.robots.ox.ac.uk/pascal/VOC/)</br>
+    [model 0(182M)](http://host.robots.ox.ac.uk/pascal/VOC/)</br>
+    [model 1(182M)](http://host.robots.ox.ac.uk/pascal/VOC/)</br>
+    [model 2(182M)](http://host.robots.ox.ac.uk/pascal/VOC/)</br>
 
-Training (Script comming soon.)
-----
 
 Datasets
 ---- 
