@@ -13,7 +13,7 @@ This repository is for [Semantic Segmentation via Structured Patch Prediction, C
 
 Installation
 ----
-This library is based on [Caffe](https://github.com/BVLC/caffe). [CuDNN](https://developer.nvidia.com/cudnn) and [NCCL](https://github.com/NVIDIA/nccl) are required. Please follow
+This library is based on [Caffe](https://github.com/BVLC/caffe). [CuDNN 7](https://developer.nvidia.com/cudnn) and [NCCL 1](https://github.com/NVIDIA/nccl) are required. Please follow
 the installation instruction of [Caffe](https://github.com/BVLC/caffe).
 
 
@@ -31,6 +31,7 @@ Inference
 Matlab code. Please excute the scripts in Matlab folder.
 
 * Cityscapes pretrained models
+
     [model 0](http://host.robots.ox.ac.uk/pascal/VOC/)
     
     [model 1](http://host.robots.ox.ac.uk/pascal/VOC/)
