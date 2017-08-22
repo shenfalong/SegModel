@@ -26,9 +26,14 @@ including training code and test code.
 * Support multi-batch normalization.
 * Support training generative adversial networks.
 
-Inference (Script comming soon.)
+Inference
 ----
+Matlab code.
 
+* Cityscapes pretrained models
+    [model 0](http://host.robots.ox.ac.uk/pascal/VOC/)
+    [model 1](http://host.robots.ox.ac.uk/pascal/VOC/)
+    [model 2](http://host.robots.ox.ac.uk/pascal/VOC/)    
 
 Training (Script comming soon.)
 ----
@@ -51,14 +56,4 @@ car-carried cameras. It should be noticed that the size of every image is 1024 Ã
 * [MIT Secene Parsing](http://sceneparsing.csail.mit.edu/) (Too many categories.)
 
 The data for this benchmark comes from ADE20K Dataset which contains more than 20K scene-centric images exhaustively annotated with objects and object parts. Specifically, the benchmark is divided into 20K images for training, 2K images for validation, and another batch of held-out images for testing. There are totally 150 semantic categories included for evaluation, which include stuffs like sky, road, grass, and discrete objects like person, car, bed. Note that there are non-uniform distribution of objects occuring in the images, mimicking a more natural object occurrence in daily scene.
-
-Pretrained Model (comming soon)
-----
-* ImageNet model
-  
-* Pascal VOC 2012
-
-* Cityscapes
-
-* MIT Secene Parsing 
 
