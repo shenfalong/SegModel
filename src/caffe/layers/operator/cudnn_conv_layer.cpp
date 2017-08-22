@@ -28,11 +28,11 @@ void CuDNNConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom
 
 
   cudnn::createFilterDesc<Dtype>(&filter_desc_,
-      this->num_output_ / this->group_, this->channels_ / this->group_, this->kernel_size_, this->kernel_size_);
+      this->num_output_, this->channels_/this->group_, this->kernel_size_, this->kernel_size_);
   if (this->layer_param_.convolution_param().bias_term()) 
   {
     cudnn::createTensor4dDesc<Dtype>(&bias_desc_);
-   	cudnn::setTensor4dDesc<Dtype>(&bias_desc_, 1, this->num_output_/ this->group_, 1, 1); 
+   	cudnn::setTensor4dDesc<Dtype>(&bias_desc_, 1, this->num_output_, 1, 1); 
   } 
 
   cudnn::createTensor4dDesc<Dtype>(&bottom_descs_);
@@ -52,23 +52,13 @@ void CuDNNConvolutionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, c
   const int height_out = top[0]->height();
   const int width_out = top[0]->width();
 
-	if (this->group_ == 1)
-	{
-		cudnn::setTensor4dDesc<Dtype>(&bottom_descs_,
+	cudnn::setTensor4dDesc<Dtype>(&bottom_descs_,
 		    num, this->channels_, height, width);
-		cudnn::setTensor4dDesc<Dtype>(&top_descs_,
+	cudnn::setTensor4dDesc<Dtype>(&top_descs_,
 		    num, this->num_output_, height_out, width_out);  
-	}
-	else
-	{
-		CHECK_EQ(this->num_output_,this->channels_);
-		cudnn::setTensor4dDesc<Dtype>(&bottom_descs_,
-		    1, this->channels_  / this->group_ , height, width);
-		cudnn::setTensor4dDesc<Dtype>(&top_descs_,
-		    1, this->num_output_  / this->group_ , height_out, width_out);  	
-	}
+
 	cudnn::setConvolutionDesc<Dtype>(&conv_descs_, 
-		    this->pad_, this->pad_, this->stride_, this->stride_, this->filter_stride_, this->filter_stride_);
+		    this->pad_, this->pad_, this->stride_, this->stride_, this->filter_stride_, this->filter_stride_, this->group_);
   //set the max work space data in case of RUNOUT of memory
   //take 448 x 448 as a exemplar
 	size_t workspace_limit_bytes = 1011888000;

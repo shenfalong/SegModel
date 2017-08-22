@@ -102,10 +102,13 @@ inline void createConvolutionDesc(cudnnConvolutionDescriptor_t* conv) {
 
 template <typename Dtype>
 inline void setConvolutionDesc(cudnnConvolutionDescriptor_t* conv, 
-    int pad_h, int pad_w, int stride_h, int stride_w, int filter_stride_h, int filter_stride_w) {
+    int pad_h, int pad_w, int stride_h, int stride_w, int filter_stride_h, int filter_stride_w, int group = 1, 
+    cudnnMathType_t mathType = CUDNN_TENSOR_OP_MATH) {
    CUDNN_CHECK(cudnnSetConvolution2dDescriptor(*conv,
       pad_h, pad_w, stride_h, stride_w, filter_stride_h, filter_stride_w, 
       CUDNN_CROSS_CORRELATION,dataType<Dtype>::type));
+   CUDNN_CHECK(cudnnSetConvolutionMathType(*conv, mathType));
+   CUDNN_CHECK(cudnnSetConvolutionGroupCount(*conv, group));
 }
 
 }  // namespace cudnn

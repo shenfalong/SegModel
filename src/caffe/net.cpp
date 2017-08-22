@@ -10,19 +10,13 @@
 #include "caffe/util/io.hpp"
 #include "caffe/util/format.hpp"
 #include "caffe/layers/func/parallel_layer.hpp"
+#include <boost/thread.hpp>
 using std::pair;
 using std::map;
 using std::set;
 
 namespace caffe {
-#if 0
-template <typename Dtype>
-int Net<Dtype>::adam_iter_ = 0;
-template <typename Dtype>
-Dtype Net<Dtype>::momentum_power_ = -1;
-template <typename Dtype>
-Dtype Net<Dtype>::momentum2_power_ = -1;
-#endif 
+
 
 template <typename Dtype>
 Net<Dtype>::Net(const NetParameter& param, const vector<shared_ptr<Blob<Dtype> > > net_input_blobs, const vector<string> net_input_blob_names):param_(param)
@@ -85,7 +79,7 @@ Net<Dtype>::Net(const NetParameter& param, const vector<shared_ptr<Blob<Dtype> >
   for (int i = 0; i < param_.layer_size(); ++i)
   {
     const LayerParameter& layer_param = param_.layer(i);
-    if (layer_param.type() != "ParallelBatchNormalization")
+    if (layer_param.type() != "ParallelBatchNorm")
     	layers_.push_back(shared_ptr<Layer<Dtype> >(new ParallelLayer<Dtype>(layer_param)));
     else
     	layers_.push_back(LayerRegistry<Dtype>::CreateLayer(layer_param));
@@ -194,7 +188,7 @@ Net<Dtype>::Net(const NetParameter& param, const vector<shared_ptr<Blob<Dtype> >
 
   }
 //--------------------------	
-LOG(INFO)<<"*************************** computing memory ***************************************";
+	LOG(INFO)<<"*************************** computing memory ***************************************";
 	
 	Dtype memory_cost_data = 0;
 	Dtype max_diff = 0;
@@ -240,14 +234,13 @@ LOG(INFO)<<"********************************************************************
 		}
 	}
 }
-
 template <typename Dtype>
 Dtype Net<Dtype>::Forward()
-{
+{ 
 	Dtype loss = 0;
   for (int i = 0; i < layers_.size(); ++i)
   {
-   	//LOG(INFO)<<"fowarding layer "<<layer_names_[i];
+  	//LOG(INFO)<<"fowarding layer "<<i<<", name "<<layer_names_[i];	
     layers_[i]->Reshape(bottom_vecs_[i], top_vecs_[i]);   
     /*------------------------------------------------------------------------------*/
     if ((Caffe::reuse() == true||!layer_need_backward_[i]) && param_.num_flow() > 0)
@@ -317,6 +310,8 @@ Dtype Net<Dtype>::Forward()
   }
   //if (Caffe::gan_type() == "train_gnet")
   // 	LOG(FATAL)<<"--------------";
+  //LOG(INFO)<<"------------------------------";
+  
   return loss;
 }
 
@@ -325,7 +320,9 @@ void Net<Dtype>::Backward()
 {
   for (int i = layers_.size() - 1; i >= 0; --i)
   {  	
-  	//LOG(INFO)<<"backwarding layer "<<layer_names_[i];
+  	//LOG(INFO)<<"backwarding layer "<<i<<" "<<layer_names_[i];
+  
+  	
   	layers_[i]->Reshape(bottom_vecs_[i], top_vecs_[i]);
     if (!layer_need_backward_[i])
       continue;
@@ -400,7 +397,7 @@ void Net<Dtype>::Backward()
     //	caffe_gpu_asum(top_vecs_[i][0]->count(),top_vecs_[i][0]->gpu_diff(),&sum);
     //	LOG(INFO)<<sum;
   	//}
-  }  
+  }  	
 }
 
 template <typename Dtype>
@@ -527,6 +524,8 @@ void Net<Dtype>::Update(int iter, int max_iter, bool display)
 	if (optimizer_.type() == "SGD")
 	{
 		for (int i = 0; i < layers_.size(); i++)
+		{
+			//LOG(INFO)<<"Update layer "<<i<<", "<<layer_names_[i];
 			for (int j = 0;j < layers_[i]->blobs().size();j++)
 			{
 				Blob<Dtype>*  param_blob = layers_[i]->blobs()[j].get();
@@ -547,6 +546,7 @@ void Net<Dtype>::Update(int iter, int max_iter, bool display)
 				caffe_gpu_add(param_blob->count(), Dtype(1), param_blob->gpu_data(), Dtype(-1), param_blob->gpu_diff(),
 					            param_blob->mutable_gpu_data());	            
 			}
+		}
 	}
 	else if (optimizer_.type() == "Adam")
 	{			
@@ -579,50 +579,20 @@ void Net<Dtype>::Update(int iter, int max_iter, bool display)
 	else
 		LOG(FATAL)<<"unspported optimization type";                                  
 }
+
 template <typename Dtype>
-void Net<Dtype>::BcastData()
-{
-	if (NGPUS > 1)
-	{			
-		for (int i = 0; i < layers_.size(); i++)
-			for (int j = 0;j < layers_[i]->blobs().size();j++)
-			{
-				CUDA_SYNCHRONIZE;	
-				for (int k = 0; k < NGPUS; k++) 
-				{
-					CUDA_CHECK(cudaSetDevice(Caffe::GPUs[k]));
-					ncclBcast((void *)layers_[i]->parallel_blobs()[j*NGPUS+k]->mutable_gpu_data(),layers_[i]->parallel_blobs()[j*NGPUS+k]->count(),
-															ncclFloat,0,Caffe::comms(k),Caffe::stream(k));		
-				}
-				CUDA_SYNCHRONIZE;
-			}
-					
-	}
-}
-template <typename Dtype>
-void Net<Dtype>::ReduceDiff()
-{
-	if (NGPUS > 1)
-	{			
-		for (int i = 0; i < layers_.size(); i++)
-			for (int j = 0;j < layers_[i]->blobs().size();j++)
-			{
-				CUDA_SYNCHRONIZE;	
-				for (int k = 0; k < NGPUS; k++) 
-				{
-					CUDA_CHECK(cudaSetDevice(Caffe::GPUs[k]));
-					ncclReduce(layers_[i]->parallel_blobs()[j*NGPUS+k]->gpu_diff(),layers_[i]->parallel_blobs()[j*NGPUS]->mutable_gpu_diff(),
-															layers_[i]->parallel_blobs()[j*NGPUS]->count(),
-															ncclFloat,ncclSum,0,Caffe::comms(k),Caffe::stream(k));			
-				}
-				CUDA_SYNCHRONIZE;		
-			}
-	}
+void Net<Dtype>::ScaleDiff(const Dtype scalar)
+{	
+	for (int i = 0; i < layers_.size(); i++)
+		for (int j = 0;j < layers_[i]->blobs().size();j++)
+			caffe_gpu_scal(layers_[i]->blobs()[j]->count(),scalar,layers_[i]->blobs()[j]->mutable_gpu_diff());
 }
 template <typename Dtype>
 void Net<Dtype>::ClearParamDiffs()
 {
 	for (int i = 0; i < layers_.size(); i++)
+	{
+		//LOG(INFO)<<"clear layer "<<i<<", "<<layer_names_[i];
 		for (int j = 0;j < layers_[i]->blobs().size();j++)
 		{
 			caffe_gpu_set(layers_[i]->blobs()[j]->count(), Dtype(0), layers_[i]->blobs()[j]->mutable_gpu_diff());
@@ -633,10 +603,10 @@ void Net<Dtype>::ClearParamDiffs()
 					CUDA_CHECK(cudaSetDevice(Caffe::GPUs[k]));
 					caffe_gpu_set(layers_[i]->parallel_blobs()[j*NGPUS+k]->count(), Dtype(0), layers_[i]->parallel_blobs()[j*NGPUS+k]->mutable_gpu_diff());
 				}
-			}
-			CUDA_CHECK(cudaSetDevice(Caffe::GPUs[0])); 
+				CUDA_CHECK(cudaSetDevice(Caffe::GPUs[0])); 
+			}		
 		}
-
+	}
 }
 
 

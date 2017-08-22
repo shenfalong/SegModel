@@ -77,9 +77,8 @@ void ImageSegDataLayer<Dtype>::InternalThreadEntry(int gpu_id)
 
  //new thread treat GPU 0 as default device, so it is necessary to set device in case of
   //ghost memory
-#ifndef CPU_ONLY
   CUDA_CHECK(cudaSetDevice(Caffe::GPUs[gpu_id]));
-#endif
+
 
   DataParameter image_data_param    = this->layer_param_.data_param();
   TransformationParameter transform_param = this->layer_param_.transform_param();
@@ -281,10 +280,8 @@ void ImageSegDataLayer<Dtype>::InternalThreadEntry(int gpu_id)
     }
     else
     {
-      this->transformed_data_.set_cpu_data(this->prefetch_data_.mutable_cpu_data()+
-      														this->prefetch_data_.offset(item_id));
-      this->transformed_label_.set_cpu_data(this->prefetch_label_.mutable_cpu_data()+
-      														this->prefetch_label_.offset(item_id));
+      this->transformed_data_.set_cpu_data(this->prefetch_data_.mutable_cpu_data()+ this->prefetch_data_.offset(item_id));
+      this->transformed_label_.set_cpu_data(this->prefetch_label_.mutable_cpu_data()+ this->prefetch_label_.offset(item_id));
       this->data_transformer_->TransformImgAndSeg(cv_img_seg, &(this->transformed_data_), &(this->transformed_label_), ignore_label);    
     }
 

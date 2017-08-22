@@ -17,9 +17,11 @@ void ParallelBatchNormLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& botto
       this->blobs_[i].reset(new Blob<Dtype>());
       this->blobs_[i]->Reshape(1,K,1,1);
     }
-    Dtype std = 0.02;
-    caffe_rng_gaussian<Dtype>(this->blobs_[0]->count(), Dtype(1), std, this->blobs_[0]->mutable_cpu_data());
-    caffe_rng_gaussian<Dtype>(this->blobs_[1]->count(), Dtype(0), std, this->blobs_[1]->mutable_cpu_data());
+    //Dtype std = 0.02;
+    //caffe_rng_gaussian<Dtype>(this->blobs_[0]->count(), Dtype(1), std, this->blobs_[0]->mutable_cpu_data());
+    //caffe_rng_gaussian<Dtype>(this->blobs_[1]->count(), Dtype(0), std, this->blobs_[1]->mutable_cpu_data());
+    caffe_set(this->blobs_[0]->count(),Dtype(1),this->blobs_[0]->mutable_cpu_data());
+    caffe_set(this->blobs_[1]->count(),Dtype(0),this->blobs_[1]->mutable_cpu_data()); 
     caffe_set(this->blobs_[2]->count(),Dtype(0),this->blobs_[2]->mutable_cpu_data());
     caffe_set(this->blobs_[3]->count(),Dtype(1),this->blobs_[3]->mutable_cpu_data());
 		

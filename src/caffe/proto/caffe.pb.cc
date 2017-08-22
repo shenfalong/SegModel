@@ -315,10 +315,11 @@ void protobuf_AssignDesc_src_2fcaffe_2fproto_2fcaffe_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(ParamSpec));
   LayerProp_descriptor_ = file->message_type(9);
-  static const int LayerProp_offsets_[3] = {
+  static const int LayerProp_offsets_[4] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(LayerProp, loss_weight_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(LayerProp, need_backward_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(LayerProp, sec_loss_weight_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(LayerProp, norm_value_),
   };
   LayerProp_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -994,112 +995,113 @@ void protobuf_AddDesc_src_2fcaffe_2fproto_2fcaffe_2eproto() {
     "t\030\013 \001(\010:\005false\022\025\n\nresolution\030\014 \001(\005:\0011\022\023\n"
     "\007classes\030\r \001(\005:\00221\022\034\n\rrandom_rotate\030\016 \001("
     "\010:\005false\"0\n\tParamSpec\022\017\n\007lr_mult\030\001 \001(\002\022\022"
-    "\n\ndecay_mult\030\002 \001(\002\"\\\n\tLayerProp\022\026\n\013loss_"
+    "\n\ndecay_mult\030\002 \001(\002\"s\n\tLayerProp\022\026\n\013loss_"
     "weight\030\002 \001(\002:\0010\022\033\n\rneed_backward\030\003 \001(\010:\004"
-    "true\022\032\n\017sec_loss_weight\030\004 \001(\002:\0010\"\206\013\n\016Lay"
-    "erParameter\022\014\n\004name\030\001 \001(\t\022\014\n\004type\030\002 \001(\t\022"
-    "\016\n\006bottom\030\003 \003(\t\022\013\n\003top\030\004 \003(\t\022\023\n\013bottom_f"
-    "low\030e \003(\005\022\020\n\010top_flow\030f \003(\005\022!\n\007include\030\005"
-    " \001(\0132\020.caffe.LayerProp\022\037\n\005param\030\006 \003(\0132\020."
-    "caffe.ParamSpec\022\037\n\005blobs\030\007 \003(\0132\020.caffe.B"
-    "lobProto\022%\n\006branch\030\010 \003(\0132\025.caffe.LayerPa"
-    "rameter\022\020\n\010bind_key\030\t \001(\t\022\022\n\nbind_value\030"
-    "\n \001(\t\022(\n\ndata_param\030\031 \001(\0132\024.caffe.DataPa"
-    "rameter\0227\n\017transform_param\030\032 \001(\0132\036.caffe"
-    ".TransformationParameter\0226\n\021convolution_"
-    "param\030\033 \001(\0132\033.caffe.ConvolutionParameter"
-    "\022(\n\nloss_param\030\034 \001(\0132\024.caffe.LossParamet"
-    "er\022.\n\rpooling_param\030\035 \001(\0132\027.caffe.Poolin"
-    "gParameter\0229\n\023inner_product_param\030\036 \001(\0132"
-    "\034.caffe.InnerProductParameter\0223\n\020batch_n"
-    "orm_param\030\037 \001(\0132\031.caffe.BatchNormParamet"
-    "er\0220\n\016shortcut_param\030  \001(\0132\030.caffe.Short"
-    "cutParameter\0220\n\016accuracy_param\030! \001(\0132\030.c"
-    "affe.AccuracyParameter\022-\n\nnorm_param\030\" \001"
-    "(\0132\031.caffe.NormalizeParameter\022=\n\025context"
-    "_pooling_param\030# \001(\0132\036.caffe.ContextPool"
-    "ingParameter\022&\n\tcrf_param\030$ \001(\0132\023.caffe."
-    "CRFParameter\022.\n\reltwise_param\030% \001(\0132\027.ca"
-    "ffe.EltwiseParameter\022;\n\024parse_evaluate_p"
-    "aram\030& \001(\0132\035.caffe.ParseEvaluateParamete"
-    "r\022.\n\rdropout_param\030\' \001(\0132\027.caffe.Dropout"
-    "Parameter\022,\n\014interp_param\030( \001(\0132\026.caffe."
-    "InterpParameter\022&\n\tsec_param\030) \001(\0132\023.caf"
-    "fe.SecParameter\022*\n\013noise_param\030* \001(\0132\025.c"
-    "affe.NoiseParameter\022(\n\nrelu_param\030+ \001(\0132"
-    "\024.caffe.ReLUParameter\022%\n\013shape_param\030, \001"
-    "(\0132\020.caffe.BlobShape\022,\n\014concat_param\030- \001"
-    "(\0132\026.caffe.ConcatParameter\022&\n\014first_mome"
-    "nt\030. \003(\0132\020.caffe.BlobProto\022\'\n\rsecond_mom"
-    "ent\030/ \003(\0132\020.caffe.BlobProto\022\024\n\014bottom_in"
-    "dex\0300 \003(\005\"#\n\017ConcatParameter\022\020\n\010channels"
-    "\030\001 \003(\005\"*\n\rReLUParameter\022\031\n\016negative_slop"
-    "e\030\001 \001(\002:\0010\"@\n\016NoiseParameter\022\013\n\003num\030\001 \001("
-    "\005\022\020\n\010channels\030\002 \001(\005\022\017\n\007classes\030\003 \001(\005\"#\n\014"
-    "SecParameter\022\023\n\013sec_feature\030\001 \001(\t\"a\n\017Int"
-    "erpParameter\022\024\n\014interp_ratio\030\001 \001(\002\022\016\n\006st"
-    "ride\030\002 \001(\005\022\023\n\013kernel_size\030\003 \001(\005\022\023\n\013num_c"
-    "lasses\030\004 \001(\005\".\n\020DropoutParameter\022\032\n\rdrop"
-    "out_ratio\030\001 \001(\002:\0030.5\"B\n\026ParseEvaluatePar"
-    "ameter\022\022\n\nnum_labels\030\001 \001(\005\022\024\n\014ignore_lab"
-    "el\030\002 \003(\005\"k\n\020EltwiseParameter\022\026\n\toperatio"
-    "n\030\001 \001(\t:\003sum\022\r\n\005coeff\030\002 \003(\002\022\036\n\020stable_pr"
-    "od_grad\030\003 \001(\010:\004true\022\020\n\010backward\030\004 \003(\010\"p\n"
-    "\014CRFParameter\022\023\n\010max_iter\030\001 \001(\005:\0011\022\016\n\006ra"
-    "dius\030\002 \001(\002\022\023\n\005scale\030\003 \001(\002:\0040.01\022\021\n\003eps\030\004"
-    " \001(\002:\0040.01\022\023\n\005alpha\030\005 \001(\002:\0040.01\"a\n\027Conte"
-    "xtPoolingParameter\022\024\n\tcontext_h\030\001 \001(\r:\0010"
-    "\022\024\n\tcontext_w\030\002 \001(\r:\0010\022\014\n\004pool\030\003 \001(\t\022\014\n\004"
-    "mode\030\004 \001(\t\"@\n\022NormalizeParameter\022\026\n\013scal"
-    "e_value\030\001 \001(\002:\0011\022\022\n\003eps\030\002 \001(\002:\0051e-10\";\n\021"
-    "AccuracyParameter\022\020\n\005top_k\030\001 \001(\r:\0011\022\024\n\014i"
-    "gnore_label\030\002 \001(\005\"Q\n\021ShortcutParameter\022\r"
-    "\n\005scale\030\001 \001(\002\022\032\n\rdropout_ratio\030\002 \001(\002:\0030."
-    "5\022\021\n\006groups\030\003 \001(\r:\0011\"/\n\022BatchNormParamet"
-    "er\022\031\n\010bn_state\030\001 \001(\t:\007learned\"W\n\tInputBl"
-    "ob\022\014\n\004name\030\001 \001(\t\022\013\n\003num\030\002 \001(\005\022\020\n\010channel"
-    "s\030\003 \001(\005\022\016\n\006height\030\004 \001(\005\022\r\n\005width\030\005 \001(\005\"\214"
-    "\001\n\014NetParameter\022\014\n\004name\030\001 \001(\t\022$\n\005layer\030d"
-    " \003(\0132\025.caffe.LayerParameter\022\r\n\005input\030\003 \003"
-    "(\t\022$\n\ninput_blob\030\005 \003(\0132\020.caffe.InputBlob"
-    "\022\023\n\010num_flow\030\006 \001(\005:\0010\"\217\002\n\014NetOptimizer\022\017"
-    "\n\007base_lr\030\001 \001(\002\022\021\n\004type\030\002 \001(\t:\003SGD\022\021\n\tlr"
-    "_policy\030\003 \001(\t\022\r\n\005gamma\030\004 \001(\002\022\r\n\005power\030\005 "
-    "\001(\002\022\020\n\010stepsize\030\006 \001(\005\022\021\n\tstepvalue\030\007 \003(\005"
-    "\022\025\n\010momentum\030\010 \001(\002:\0030.9\022\024\n\014weight_decay\030"
-    "\t \001(\002\022\017\n\007display\030\013 \001(\005\022\027\n\014average_loss\030\014"
-    " \001(\005:\0011\022\030\n\tmomentum2\030\r \001(\002:\0050.999\022\024\n\005del"
-    "ta\030\016 \001(\002:\0051e-08\"\200\001\n\013SolverState\022\014\n\004iter\030"
-    "\001 \001(\005\022\023\n\013learned_net\030\002 \001(\t\022\"\n\tnet_state\030"
-    "\003 \001(\0132\017.caffe.NetState\022\024\n\014d_state_file\030\004"
-    " \001(\t\022\024\n\014g_state_file\030\005 \001(\t\"C\n\010NetState\022$"
-    "\n\005layer\030\001 \003(\0132\025.caffe.LayerParameter\022\021\n\t"
-    "adam_iter\030\002 \001(\005\"\240\006\n\017SolverParameter\022\013\n\003n"
-    "et\030\001 \001(\t\022&\n\tnet_param\030\002 \001(\0132\023.caffe.NetP"
-    "arameter\022$\n\007net_opt\030\003 \001(\0132\023.caffe.NetOpt"
-    "imizer\022\020\n\010max_iter\030\004 \001(\005\022\033\n\023test_initial"
-    "ization\030\005 \001(\010\022\025\n\rtest_interval\030\006 \001(\005\022\021\n\t"
-    "test_iter\030\007 \001(\005\022!\n\teval_type\030\010 \001(\t:\016clas"
-    "sification\022$\n\025accumulate_batch_norm\030\t \001("
-    "\010:\005false\022\034\n\024accumulate_test_iter\030\n \001(\r\022\033"
-    "\n\023accumulate_max_iter\030\013 \001(\r\022\024\n\titer_size"
-    "\030\014 \001(\005:\0011\022\023\n\010snapshot\030\r \001(\005:\0010\022\027\n\017snapsh"
-    "ot_prefix\030\016 \001(\t\022\030\n\013solver_type\030\017 \001(\t:\003CN"
-    "N\022\017\n\007display\030\020 \001(\005\022\031\n\010bn_state\030\022 \001(\t:\007le"
-    "arned\022\030\n\ndrop_state\030\023 \001(\t:\004rand\022\032\n\013secon"
-    "d_pass\030\024 \001(\010:\005false\022\020\n\010test_net\030\025 \001(\t\022&\n"
-    "\tg_net_opt\030d \001(\0132\023.caffe.NetOptimizer\022&\n"
-    "\td_net_opt\030e \001(\0132\023.caffe.NetOptimizer\022\r\n"
-    "\005g_net\030f \001(\t\022(\n\013g_net_param\030g \001(\0132\023.caff"
-    "e.NetParameter\022\r\n\005d_net\030j \001(\t\022(\n\013d_net_p"
-    "aram\030k \001(\0132\023.caffe.NetParameter\022\024\n\014d_int"
-    "erp_net\030n \001(\t\022+\n\016d_interp_param\030o \001(\0132\023."
-    "caffe.NetParameter\"y\n\020PoolingParameter\022\021"
-    "\n\004pool\030\001 \001(\t:\003ave\022\016\n\003pad\030\002 \001(\r:\0010\022\023\n\013ker"
-    "nel_size\030\003 \001(\r\022\021\n\006stride\030\004 \001(\r:\0011\022\032\n\013glo"
-    "bal_pool\030\005 \001(\010:\005false\"\\\n\rLossParameter\022\024"
-    "\n\014ignore_label\030\001 \001(\005\022\031\n\014keep_portion\030\002 \001"
-    "(\002:\0030.5\022\032\n\013single_term\030\003 \001(\010:\005false", 5715);
+    "true\022\032\n\017sec_loss_weight\030\004 \001(\002:\0010\022\025\n\nnorm"
+    "_value\030\005 \001(\002:\0011\"\206\013\n\016LayerParameter\022\014\n\004na"
+    "me\030\001 \001(\t\022\014\n\004type\030\002 \001(\t\022\016\n\006bottom\030\003 \003(\t\022\013"
+    "\n\003top\030\004 \003(\t\022\023\n\013bottom_flow\030e \003(\005\022\020\n\010top_"
+    "flow\030f \003(\005\022!\n\007include\030\005 \001(\0132\020.caffe.Laye"
+    "rProp\022\037\n\005param\030\006 \003(\0132\020.caffe.ParamSpec\022\037"
+    "\n\005blobs\030\007 \003(\0132\020.caffe.BlobProto\022%\n\006branc"
+    "h\030\010 \003(\0132\025.caffe.LayerParameter\022\020\n\010bind_k"
+    "ey\030\t \001(\t\022\022\n\nbind_value\030\n \001(\t\022(\n\ndata_par"
+    "am\030\031 \001(\0132\024.caffe.DataParameter\0227\n\017transf"
+    "orm_param\030\032 \001(\0132\036.caffe.TransformationPa"
+    "rameter\0226\n\021convolution_param\030\033 \001(\0132\033.caf"
+    "fe.ConvolutionParameter\022(\n\nloss_param\030\034 "
+    "\001(\0132\024.caffe.LossParameter\022.\n\rpooling_par"
+    "am\030\035 \001(\0132\027.caffe.PoolingParameter\0229\n\023inn"
+    "er_product_param\030\036 \001(\0132\034.caffe.InnerProd"
+    "uctParameter\0223\n\020batch_norm_param\030\037 \001(\0132\031"
+    ".caffe.BatchNormParameter\0220\n\016shortcut_pa"
+    "ram\030  \001(\0132\030.caffe.ShortcutParameter\0220\n\016a"
+    "ccuracy_param\030! \001(\0132\030.caffe.AccuracyPara"
+    "meter\022-\n\nnorm_param\030\" \001(\0132\031.caffe.Normal"
+    "izeParameter\022=\n\025context_pooling_param\030# "
+    "\001(\0132\036.caffe.ContextPoolingParameter\022&\n\tc"
+    "rf_param\030$ \001(\0132\023.caffe.CRFParameter\022.\n\re"
+    "ltwise_param\030% \001(\0132\027.caffe.EltwiseParame"
+    "ter\022;\n\024parse_evaluate_param\030& \001(\0132\035.caff"
+    "e.ParseEvaluateParameter\022.\n\rdropout_para"
+    "m\030\' \001(\0132\027.caffe.DropoutParameter\022,\n\014inte"
+    "rp_param\030( \001(\0132\026.caffe.InterpParameter\022&"
+    "\n\tsec_param\030) \001(\0132\023.caffe.SecParameter\022*"
+    "\n\013noise_param\030* \001(\0132\025.caffe.NoiseParamet"
+    "er\022(\n\nrelu_param\030+ \001(\0132\024.caffe.ReLUParam"
+    "eter\022%\n\013shape_param\030, \001(\0132\020.caffe.BlobSh"
+    "ape\022,\n\014concat_param\030- \001(\0132\026.caffe.Concat"
+    "Parameter\022&\n\014first_moment\030. \003(\0132\020.caffe."
+    "BlobProto\022\'\n\rsecond_moment\030/ \003(\0132\020.caffe"
+    ".BlobProto\022\024\n\014bottom_index\0300 \003(\005\"#\n\017Conc"
+    "atParameter\022\020\n\010channels\030\001 \003(\005\"*\n\rReLUPar"
+    "ameter\022\031\n\016negative_slope\030\001 \001(\002:\0010\"@\n\016Noi"
+    "seParameter\022\013\n\003num\030\001 \001(\005\022\020\n\010channels\030\002 \001"
+    "(\005\022\017\n\007classes\030\003 \001(\005\"#\n\014SecParameter\022\023\n\013s"
+    "ec_feature\030\001 \001(\t\"a\n\017InterpParameter\022\024\n\014i"
+    "nterp_ratio\030\001 \001(\002\022\016\n\006stride\030\002 \001(\005\022\023\n\013ker"
+    "nel_size\030\003 \001(\005\022\023\n\013num_classes\030\004 \001(\005\".\n\020D"
+    "ropoutParameter\022\032\n\rdropout_ratio\030\001 \001(\002:\003"
+    "0.5\"B\n\026ParseEvaluateParameter\022\022\n\nnum_lab"
+    "els\030\001 \001(\005\022\024\n\014ignore_label\030\002 \003(\005\"k\n\020Eltwi"
+    "seParameter\022\026\n\toperation\030\001 \001(\t:\003sum\022\r\n\005c"
+    "oeff\030\002 \003(\002\022\036\n\020stable_prod_grad\030\003 \001(\010:\004tr"
+    "ue\022\020\n\010backward\030\004 \003(\010\"p\n\014CRFParameter\022\023\n\010"
+    "max_iter\030\001 \001(\005:\0011\022\016\n\006radius\030\002 \001(\002\022\023\n\005sca"
+    "le\030\003 \001(\002:\0040.01\022\021\n\003eps\030\004 \001(\002:\0040.01\022\023\n\005alp"
+    "ha\030\005 \001(\002:\0040.01\"a\n\027ContextPoolingParamete"
+    "r\022\024\n\tcontext_h\030\001 \001(\r:\0010\022\024\n\tcontext_w\030\002 \001"
+    "(\r:\0010\022\014\n\004pool\030\003 \001(\t\022\014\n\004mode\030\004 \001(\t\"@\n\022Nor"
+    "malizeParameter\022\026\n\013scale_value\030\001 \001(\002:\0011\022"
+    "\022\n\003eps\030\002 \001(\002:\0051e-10\";\n\021AccuracyParameter"
+    "\022\020\n\005top_k\030\001 \001(\r:\0011\022\024\n\014ignore_label\030\002 \001(\005"
+    "\"Q\n\021ShortcutParameter\022\r\n\005scale\030\001 \001(\002\022\032\n\r"
+    "dropout_ratio\030\002 \001(\002:\0030.5\022\021\n\006groups\030\003 \001(\r"
+    ":\0011\"/\n\022BatchNormParameter\022\031\n\010bn_state\030\001 "
+    "\001(\t:\007learned\"W\n\tInputBlob\022\014\n\004name\030\001 \001(\t\022"
+    "\013\n\003num\030\002 \001(\005\022\020\n\010channels\030\003 \001(\005\022\016\n\006height"
+    "\030\004 \001(\005\022\r\n\005width\030\005 \001(\005\"\214\001\n\014NetParameter\022\014"
+    "\n\004name\030\001 \001(\t\022$\n\005layer\030d \003(\0132\025.caffe.Laye"
+    "rParameter\022\r\n\005input\030\003 \003(\t\022$\n\ninput_blob\030"
+    "\005 \003(\0132\020.caffe.InputBlob\022\023\n\010num_flow\030\006 \001("
+    "\005:\0010\"\217\002\n\014NetOptimizer\022\017\n\007base_lr\030\001 \001(\002\022\021"
+    "\n\004type\030\002 \001(\t:\003SGD\022\021\n\tlr_policy\030\003 \001(\t\022\r\n\005"
+    "gamma\030\004 \001(\002\022\r\n\005power\030\005 \001(\002\022\020\n\010stepsize\030\006"
+    " \001(\005\022\021\n\tstepvalue\030\007 \003(\005\022\025\n\010momentum\030\010 \001("
+    "\002:\0030.9\022\024\n\014weight_decay\030\t \001(\002\022\017\n\007display\030"
+    "\013 \001(\005\022\027\n\014average_loss\030\014 \001(\005:\0011\022\030\n\tmoment"
+    "um2\030\r \001(\002:\0050.999\022\024\n\005delta\030\016 \001(\002:\0051e-08\"\200"
+    "\001\n\013SolverState\022\014\n\004iter\030\001 \001(\005\022\023\n\013learned_"
+    "net\030\002 \001(\t\022\"\n\tnet_state\030\003 \001(\0132\017.caffe.Net"
+    "State\022\024\n\014d_state_file\030\004 \001(\t\022\024\n\014g_state_f"
+    "ile\030\005 \001(\t\"C\n\010NetState\022$\n\005layer\030\001 \003(\0132\025.c"
+    "affe.LayerParameter\022\021\n\tadam_iter\030\002 \001(\005\"\240"
+    "\006\n\017SolverParameter\022\013\n\003net\030\001 \001(\t\022&\n\tnet_p"
+    "aram\030\002 \001(\0132\023.caffe.NetParameter\022$\n\007net_o"
+    "pt\030\003 \001(\0132\023.caffe.NetOptimizer\022\020\n\010max_ite"
+    "r\030\004 \001(\005\022\033\n\023test_initialization\030\005 \001(\010\022\025\n\r"
+    "test_interval\030\006 \001(\005\022\021\n\ttest_iter\030\007 \001(\005\022!"
+    "\n\teval_type\030\010 \001(\t:\016classification\022$\n\025acc"
+    "umulate_batch_norm\030\t \001(\010:\005false\022\034\n\024accum"
+    "ulate_test_iter\030\n \001(\r\022\033\n\023accumulate_max_"
+    "iter\030\013 \001(\r\022\024\n\titer_size\030\014 \001(\005:\0011\022\023\n\010snap"
+    "shot\030\r \001(\005:\0010\022\027\n\017snapshot_prefix\030\016 \001(\t\022\030"
+    "\n\013solver_type\030\017 \001(\t:\003CNN\022\017\n\007display\030\020 \001("
+    "\005\022\031\n\010bn_state\030\022 \001(\t:\007learned\022\030\n\ndrop_sta"
+    "te\030\023 \001(\t:\004rand\022\032\n\013second_pass\030\024 \001(\010:\005fal"
+    "se\022\020\n\010test_net\030\025 \001(\t\022&\n\tg_net_opt\030d \001(\0132"
+    "\023.caffe.NetOptimizer\022&\n\td_net_opt\030e \001(\0132"
+    "\023.caffe.NetOptimizer\022\r\n\005g_net\030f \001(\t\022(\n\013g"
+    "_net_param\030g \001(\0132\023.caffe.NetParameter\022\r\n"
+    "\005d_net\030j \001(\t\022(\n\013d_net_param\030k \001(\0132\023.caff"
+    "e.NetParameter\022\024\n\014d_interp_net\030n \001(\t\022+\n\016"
+    "d_interp_param\030o \001(\0132\023.caffe.NetParamete"
+    "r\"y\n\020PoolingParameter\022\021\n\004pool\030\001 \001(\t:\003ave"
+    "\022\016\n\003pad\030\002 \001(\r:\0010\022\023\n\013kernel_size\030\003 \001(\r\022\021\n"
+    "\006stride\030\004 \001(\r:\0011\022\032\n\013global_pool\030\005 \001(\010:\005f"
+    "alse\"\\\n\rLossParameter\022\024\n\014ignore_label\030\001 "
+    "\001(\005\022\031\n\014keep_portion\030\002 \001(\002:\0030.5\022\032\n\013single"
+    "_term\030\003 \001(\010:\005false", 5738);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "src/caffe/proto/caffe.proto", &protobuf_RegisterTypes);
   BlobShape::default_instance_ = new BlobShape();
@@ -5234,6 +5236,7 @@ void ParamSpec::Swap(ParamSpec* other) {
 const int LayerProp::kLossWeightFieldNumber;
 const int LayerProp::kNeedBackwardFieldNumber;
 const int LayerProp::kSecLossWeightFieldNumber;
+const int LayerProp::kNormValueFieldNumber;
 #endif  // !_MSC_VER
 
 LayerProp::LayerProp()
@@ -5255,6 +5258,7 @@ void LayerProp::SharedCtor() {
   loss_weight_ = 0;
   need_backward_ = true;
   sec_loss_weight_ = 0;
+  norm_value_ = 1;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -5293,6 +5297,7 @@ void LayerProp::Clear() {
     loss_weight_ = 0;
     need_backward_ = true;
     sec_loss_weight_ = 0;
+    norm_value_ = 1;
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
@@ -5347,6 +5352,22 @@ bool LayerProp::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(45)) goto parse_norm_value;
+        break;
+      }
+
+      // optional float norm_value = 5 [default = 1];
+      case 5: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_FIXED32) {
+         parse_norm_value:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   float, ::google::protobuf::internal::WireFormatLite::TYPE_FLOAT>(
+                 input, &norm_value_)));
+          set_has_norm_value();
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -5384,6 +5405,11 @@ void LayerProp::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteFloat(4, this->sec_loss_weight(), output);
   }
 
+  // optional float norm_value = 5 [default = 1];
+  if (has_norm_value()) {
+    ::google::protobuf::internal::WireFormatLite::WriteFloat(5, this->norm_value(), output);
+  }
+
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -5405,6 +5431,11 @@ void LayerProp::SerializeWithCachedSizes(
   // optional float sec_loss_weight = 4 [default = 0];
   if (has_sec_loss_weight()) {
     target = ::google::protobuf::internal::WireFormatLite::WriteFloatToArray(4, this->sec_loss_weight(), target);
+  }
+
+  // optional float norm_value = 5 [default = 1];
+  if (has_norm_value()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteFloatToArray(5, this->norm_value(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -5430,6 +5461,11 @@ int LayerProp::ByteSize() const {
 
     // optional float sec_loss_weight = 4 [default = 0];
     if (has_sec_loss_weight()) {
+      total_size += 1 + 4;
+    }
+
+    // optional float norm_value = 5 [default = 1];
+    if (has_norm_value()) {
       total_size += 1 + 4;
     }
 
@@ -5469,6 +5505,9 @@ void LayerProp::MergeFrom(const LayerProp& from) {
     if (from.has_sec_loss_weight()) {
       set_sec_loss_weight(from.sec_loss_weight());
     }
+    if (from.has_norm_value()) {
+      set_norm_value(from.norm_value());
+    }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
@@ -5495,6 +5534,7 @@ void LayerProp::Swap(LayerProp* other) {
     std::swap(loss_weight_, other->loss_weight_);
     std::swap(need_backward_, other->need_backward_);
     std::swap(sec_loss_weight_, other->sec_loss_weight_);
+    std::swap(norm_value_, other->norm_value_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);

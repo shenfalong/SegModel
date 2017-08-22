@@ -35,11 +35,8 @@ void BaseDataLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, const 
 template <typename Dtype>
 void BaseDataLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) 
 {
-	top[0]->Reshape(prefetch_data_.num(),prefetch_data_.channels(),
-																					prefetch_data_.height(),prefetch_data_.width());
-																					
-	top[1]->Reshape(prefetch_label_.num(),prefetch_label_.channels(),
-																				prefetch_label_.height(),prefetch_label_.width());																																		
+	top[0]->Reshape(prefetch_data_.num(),prefetch_data_.channels(), prefetch_data_.height(),prefetch_data_.width());																		
+	top[1]->Reshape(prefetch_label_.num(),prefetch_label_.channels(), prefetch_label_.height(),prefetch_label_.width());
 }
 
 template <typename Dtype>

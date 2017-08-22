@@ -73,33 +73,25 @@ void classname<Dtype>::funcname##_##gpu(const vector<Blob<Dtype>*>& top, \
 // CUDA: check for error after kernel execution and exit loudly if there is one.
 #define CUDA_POST_KERNEL_CHECK CUDA_CHECK(cudaPeekAtLastError())
 
-#define CUDA_SYNCHRONIZE \
-for(int iG=0;iG<Caffe::GPUs.size();iG++) \
-		{ CUDA_CHECK(cudaSetDevice(Caffe::GPUs[iG])); CUDA_CHECK(cudaDeviceSynchronize()); } \
-		CUDA_CHECK(cudaSetDevice(Caffe::GPUs[0]))
 
 #define NGPUS Caffe::GPUs.size() 
 
 namespace caffe {
 #define  REDUCE_DATA(blob) \
-CUDA_SYNCHRONIZE; \
 for(int iG=0;iG<NGPUS;iG++) \
 { \
 	CUDA_CHECK(cudaSetDevice(Caffe::GPUs[iG])); \
 	ncclAllReduce(blob[iG]->gpu_data(),blob[iG]->mutable_gpu_data(),  \
-		blob[iG]->count(), ncclFloat,ncclSum,Caffe::comms(iG),Caffe::stream(iG)); \
-} \
-CUDA_SYNCHRONIZE;
+		blob[iG]->count(), ncclFloat,ncclSum,Caffe::comms(iG),NULL); \
+} 
 
 #define  REDUCE_DIFF(blob) \
-CUDA_SYNCHRONIZE; \
 for(int iG=0;iG<NGPUS;iG++) \
 { \
 	CUDA_CHECK(cudaSetDevice(Caffe::GPUs[iG])); \
 	ncclAllReduce(blob[iG]->gpu_diff(),blob[iG]->mutable_gpu_diff(),  \
-		blob[iG]->count(), ncclFloat,ncclSum,Caffe::comms(iG),Caffe::stream(iG)); \
-} \
-CUDA_SYNCHRONIZE;
+		blob[iG]->count(), ncclFloat,ncclSum,Caffe::comms(iG),NULL); \
+} 
 
 // CUDA: library error reporting.
 const char* cublasGetErrorString(cublasStatus_t error);

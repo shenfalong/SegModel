@@ -85,7 +85,6 @@ void SolverSecGAN<Dtype>::Solve(const char* all_state_file)
 	d_loss.clear();
   while (this->iter_ < param_.max_iter())
   {
-  	CUDA_SYNCHRONIZE;
     g_net_->ClearParamDiffs();
     d_net_->ClearParamDiffs();    
     Dtype cur_loss = 0;
@@ -171,7 +170,7 @@ void SolverSecGAN<Dtype>::Solve(const char* all_state_file)
 		g_net_->Update(this->iter_, param_.max_iter(), false);
 		g_net_->ClearParamDiffs();     
 //-----------------------------------------------
-    ++this->iter_;
+    this->iter_++;
     
     if (this->iter_ % param_.display() == 0)
     {
@@ -190,7 +189,6 @@ void SolverSecGAN<Dtype>::Solve(const char* all_state_file)
   	for (int i = 0; i < param_.accumulate_max_iter(); ++i)
 		{	
 			g_net_->Forward();
-			d_net_->Forward();
 			Caffe::number_collect_sample ++;
 		}	
 		Caffe::number_collect_sample = -1;

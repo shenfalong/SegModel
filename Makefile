@@ -45,10 +45,10 @@ CUDA_ARCH :=-gencode arch=compute_35,code=sm_35 \
 CUDA_INCLUDE_DIR := $(CUDA_DIR)/include
 CUDA_LIB_DIR := $(CUDA_DIR)/lib64
 
-INCLUDE_DIRS := /home/i-shenfalong/caffe/cudnn/include . src /usr/local/include $(CUDA_INCLUDE_DIR)  include /home/i-shenfalong/caffe/nccl-master/build/include /home/i-shenfalong/thirdparty/include
-LIBRARY_DIRS := /home/i-shenfalong/caffe/cudnn/lib64 . /usr/lib /usr/local/lib $(CUDA_LIB_DIR) /home/i-shenfalong/caffe/nccl-master/build/lib /home/i-shenfalong/thirdparty/lib
+INCLUDE_DIRS := /home/i-shenfalong/caffe/cudnn/include . src /usr/local/include $(CUDA_INCLUDE_DIR)  include /home/i-shenfalong/caffe/nccl-master/build/include /home/i-shenfalong/thirdparty/include /home/i-shenfalong/mpich/include
+LIBRARY_DIRS := /home/i-shenfalong/caffe/cudnn/lib64 . /usr/lib /usr/local/lib $(CUDA_LIB_DIR) /home/i-shenfalong/caffe/nccl-master/build/lib /home/i-shenfalong/thirdparty/lib /home/i-shenfalong/mpich/lib
 LIBRARIES := glog gflags protobuf boost_system boost_filesystem boost_regex m lmdb opencv_core opencv_highgui opencv_imgproc boost_thread stdc++  cudnn openblas
-LIBRARIES += cudart cublas curand nccl
+LIBRARIES += cudart cublas curand nccl mpi
 WARNINGS := -Wall
 
 CXXFLAGS +=  -MMD -MP -fPIC -fopenmp

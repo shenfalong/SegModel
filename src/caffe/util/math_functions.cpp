@@ -86,11 +86,8 @@ template <typename Dtype>
 void caffe_copy(const int N, const Dtype* X, Dtype* Y) {
 	if (X != Y)
 	{
-#ifndef CPU_ONLY
-		CUDA_CHECK(cudaMemcpy(Y, X, sizeof(Dtype) * N, cudaMemcpyDefault));
-#else
-		memcpy(Y, X, sizeof(Dtype) * N);  // NOLINT(caffe/alt_fn)
-#endif
+		//CUDA_CHECK(cudaMemcpy(Y, X, sizeof(Dtype) * N, cudaMemcpyDefault));
+		caffe_gpu_memcpy(sizeof(Dtype) * N,X,Y);
   }
 }
 template void caffe_copy<bool>(const int N, const bool* X, bool* Y);

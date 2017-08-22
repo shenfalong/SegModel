@@ -67,7 +67,6 @@ void SolverCNN<Dtype>::Solve(const char* resume_file)
     //-------------- copy net-------------------
     this->share_weight(net_, test_net_);
 		test_net_->BcastData();
-		CHECK_EQ(test_net_->layers()[2]->blobs()[0]->cpu_data()[0],net_->layers()[2]->blobs()[0]->cpu_data()[0]);
     if (param_.eval_type() == "classification")
     	test();
     else if (param_.eval_type() == "segmentation")
@@ -83,6 +82,7 @@ void SolverCNN<Dtype>::Solve(const char* resume_file)
     net_->ClearParamDiffs();
     Dtype loss = 0;
     
+
 		net_->BcastData();
     for (int i = 0; i < param_.iter_size(); ++i)
     {
@@ -90,14 +90,9 @@ void SolverCNN<Dtype>::Solve(const char* resume_file)
       loss  += net_->Forward();    
       Caffe::set_reuse(true);
       net_->Backward();
-      
-      //Caffe::set_second_pass(true);
-		  //net_->SecForward();
-			//net_->Backward();
-			//Caffe::set_second_pass(false); 
     }
-    
 		net_->ReduceDiff();
+   	net_->ScaleDiff(Dtype(1)/Dtype(param_.iter_size()));	
 		
 		loss /= Dtype(param_.iter_size());	
     dispaly_loss(loss);
@@ -116,7 +111,7 @@ void SolverCNN<Dtype>::Solve(const char* resume_file)
 				Caffe::number_collect_sample = 0;
 				for (int i = 0; i < param_.accumulate_test_iter(); ++i)
 				{	
-					//Caffe::set_reuse(true);
+					Caffe::set_reuse(true);
 					net_->Forward();
 					Caffe::number_collect_sample ++;
 				}	
@@ -141,7 +136,7 @@ void SolverCNN<Dtype>::Solve(const char* resume_file)
   if (param_.accumulate_batch_norm())
   {
 		net_->BcastData();
-  	LOG(INFO)<<"====accumulate statisticals of samples for batch norm=====";
+  	LOG(INFO)<<"==== accumulate statisticals of samples for batch norm =====";
   	Caffe::number_collect_sample = 0;
   	for (int i = 0; i < param_.accumulate_max_iter(); ++i)
 		{	

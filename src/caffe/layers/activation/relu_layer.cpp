@@ -8,6 +8,13 @@ namespace caffe {
 template <typename Dtype>
 void ReLULayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) 
 {
+	CUDA_CHECK(cudaGetDevice(&gpu_id_));
+	int i;
+	for (i=0;i<Caffe::GPUs.size();i++)
+		if (Caffe::GPUs[i] == gpu_id_)
+			break;
+	gpu_id_ = i;
+	
 	negative_slope = this->layer_param_.relu_param().negative_slope();
 }
 

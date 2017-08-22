@@ -90,7 +90,9 @@ void CuDNNBatchNormLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
 		      double(0.001)
 		      ));	       	       
 */	         
-	}	   	          
+	}	   	        
+	
+	
 }
 
 template <typename Dtype>

@@ -105,6 +105,7 @@ message LayerProp {
   optional float loss_weight = 2 [default = 0];
   optional bool need_backward = 3 [default = true];
   optional float sec_loss_weight = 4 [default = 0];
+  optional float norm_value = 5 [default = 1];
 }  
 
 message LayerParameter {

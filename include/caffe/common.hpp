@@ -19,6 +19,7 @@
 #include "caffe/util/device_alternate.hpp"
 #include "boost/random/mersenne_twister.hpp"
 #include "boost/random/uniform_int.hpp"
+#include "boost/thread.hpp"
 
 
 
@@ -139,9 +140,9 @@ class Caffe {
 
   static cublasHandle_t cublas_handle();
   static curandGenerator_t curand_generator();
-  static cudaStream_t  stream(int i);
   static cudnnHandle_t  cudnn_handle(int i);
   static ncclComm_t comms(int i);
+
   
 
 	static vector<int> GPUs;
@@ -153,7 +154,10 @@ class Caffe {
 	static vector<void *> workspace_;
 	static vector<void *> parallel_workspace_;
 	static bool compare_variable(string var_name, string var_value);
-
+	
+	static boost::mutex mu_;  
+	static boost::condition_variable_any cond_; 
+	
  protected:
  	static shared_ptr<Caffe> singleton_;
 
@@ -162,7 +166,6 @@ class Caffe {
   static vector<cublasHandle_t> cublas_handle_;
   static vector<curandGenerator_t> curand_generator_;
   
-	static vector<cudaStream_t>  stream_;
   static vector<cudnnHandle_t>  cudnn_handle_;
   
 	static ncclComm_t* comms_;
@@ -174,6 +177,9 @@ class Caffe {
 	static bool second_pass_;
 	static bool reuse_;
 	
+	
+	
+
 	static rng_t * rng_;
 
  private:

@@ -63,7 +63,7 @@ void ParamCuDNNConvolutionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bott
 	}
 	else
 	{
-		CHECK_EQ(bottom[1]->num(),num_output_);
+		//CHECK_EQ(bottom[1]->num(),num_output_);
 		if (this->layer_param_.convolution_param().bias_term()) 
 			CHECK_EQ(num_output_ *(channels_ *kernel_size_*kernel_size_+1), bottom[1]->num()*bottom[1]->channels());
 		else

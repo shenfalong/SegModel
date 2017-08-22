@@ -110,11 +110,11 @@ void SoftmaxWithLossLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom
   Dtype* loss_data = loss_.mutable_gpu_data();
   Dtype* count_data = counts_.mutable_gpu_data();
  	
- 	for (int i=0;i<bottom[1]->count();i++)
- 	{
- 		CHECK_GE(bottom[1]->cpu_data()[i],0);
- 		CHECK_LE(bottom[1]->cpu_data()[i],channels-1);
- 	}
+ 	//for (int i=0;i<bottom[1]->count();i++)
+ 	//{
+ 	//	CHECK_GE(bottom[1]->cpu_data()[i],0);
+ 	//	CHECK_LE(bottom[1]->cpu_data()[i],channels-1);
+ 	//}
   forward_kernel<Dtype><<<CAFFE_GET_BLOCKS(num*height*width), CAFFE_CUDA_NUM_THREADS>>>
   (num*height*width, num, channels, height*width, prob_.gpu_data(), bottom[1]->gpu_data(),  has_ignore_label_, ignore_label_, 
   count_data, loss_data);
@@ -131,8 +131,8 @@ void SoftmaxWithLossLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom
   	top[0]->mutable_cpu_data()[0] = 0; 	 	
   
   
-  if (Solver<Dtype>::iter() % 100 == 0 && Caffe::gan_type() == "train_dnet")
-  	LOG(INFO)<<"softmax_loss = "<<top[0]->cpu_data()[0];
+  //if (Solver<Dtype>::iter() % 100 == 0 && Caffe::gan_type() == "train_dnet")
+  //	LOG(INFO)<<"softmax_loss = "<<top[0]->cpu_data()[0];
  
 }
 

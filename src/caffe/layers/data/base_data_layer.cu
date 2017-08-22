@@ -7,6 +7,7 @@ namespace caffe {
 template <typename Dtype>
 void BaseDataLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) 
 {
+
  	//if (data_iter_ == Solver<Dtype>::iter())
 	//	return;
 	//data_iter_++;
@@ -17,12 +18,12 @@ void BaseDataLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom, const
   	thread_->join(); 
 	
 
+	top[0]->Reshape(prefetch_data_.num(),prefetch_data_.channels(), prefetch_data_.height(),prefetch_data_.width());																		
+	top[1]->Reshape(prefetch_label_.num(),prefetch_label_.channels(), prefetch_label_.height(),prefetch_label_.width());
 
 	caffe_copy(top[0]->count(), prefetch_data_.cpu_data() , top[0]->mutable_gpu_data());
-	
 	caffe_copy(top[1]->count(), prefetch_label_.cpu_data(),top[1]->mutable_gpu_data());
 
- 
 #if 0
 FILE *fid = fopen("debug","wb");
 Dtype height = top[0]->height();
@@ -34,6 +35,7 @@ fclose(fid);
 LOG(FATAL)<<"----------------------------";
 #endif
   thread_.reset(new boost::thread(&BaseDataLayer<Dtype>::InternalThreadEntry,this,gpu_id_));
+
 }
 
 template <typename Dtype>

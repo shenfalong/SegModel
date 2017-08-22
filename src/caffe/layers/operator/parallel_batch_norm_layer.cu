@@ -130,21 +130,18 @@ void ParallelBatchNormLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bott
 			caffe_gpu_set(this->blobs_[2]->count(),Dtype(0),this->blobs_[2]->mutable_gpu_data());
 			caffe_gpu_set(this->blobs_[3]->count(),Dtype(0),this->blobs_[3]->mutable_gpu_data());
 		}		
-		CUDA_SYNCHRONIZE;
 		for (int i = 0; i < NGPUS; i++) 
 		{  	
 			CUDA_CHECK(cudaSetDevice(Caffe::GPUs[i]));
 			ncclBcast((void *)this->parallel_blobs_[2*NGPUS+i]->mutable_gpu_data(),this->parallel_blobs_[2*NGPUS+i]->count(),
-	 																		ncclFloat,0,Caffe::comms(i),Caffe::stream(i));			
+	 																		ncclFloat,0,Caffe::comms(i),NULL);			
 		}		
-		CUDA_SYNCHRONIZE;
 		for (int i = 0; i < NGPUS; i++) 
 		{  	
 			CUDA_CHECK(cudaSetDevice(Caffe::GPUs[i]));
 			ncclBcast((void *)this->parallel_blobs_[3*NGPUS+i]->mutable_gpu_data(),this->parallel_blobs_[3*NGPUS+i]->count(),
-	 																		ncclFloat,0,Caffe::comms(i),Caffe::stream(i));			
+	 																		ncclFloat,0,Caffe::comms(i),NULL);			
 		}		
-		CUDA_SYNCHRONIZE;
 	}	 
 #if 0
 	for (int i = 0; i < bottom.size(); ++i) 
@@ -171,7 +168,6 @@ void ParallelBatchNormLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bott
  		ncclBcast((void *)this->parallel_blobs_[3*NGPUS+i]->mutable_gpu_data(),this->parallel_blobs_[3*NGPUS+i]->count(),
  																		ncclFloat,0,Caffe::comms(i),Caffe::parallel_stream(i));																																
 	}
-	CUDA_SYNCHRONIZE;	
 #endif
 
 	int num = bottom[0]->num();
@@ -181,8 +177,7 @@ void ParallelBatchNormLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bott
 
 	const int m = num * height * width * NGPUS;
 	// compute local E[x] and E[x^2]
-	
-	CUDA_SYNCHRONIZE;	
+		
 	for(int i=0;i<NGPUS;i++)
 	{ 
 		CUDA_CHECK(cudaSetDevice(Caffe::GPUs[i]));	
@@ -194,13 +189,13 @@ void ParallelBatchNormLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bott
 			parallel_var_buffer_[i]->mutable_gpu_data()
 		);
 	}		
-	CUDA_POST_KERNEL_CHECK;
+
 
 	// sync E[x] and E[x^2]
 	REDUCE_DATA(parallel_mean_buffer_);
 	REDUCE_DATA(parallel_var_buffer_);
 
-	CUDA_SYNCHRONIZE;
+
 	for(int i=0;i<NGPUS;i++)
 	{ 
 		CUDA_CHECK(cudaSetDevice(Caffe::GPUs[i]));	
@@ -220,7 +215,7 @@ void ParallelBatchNormLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bott
 			caffe_gpu_set(this->parallel_blobs_[3*NGPUS+i]->count(),Dtype(0),this->parallel_blobs_[3*NGPUS+i]->mutable_gpu_data());
 		}
 	}
-	if (Caffe::number_collect_sample != -1 && Caffe::bn_state() == "learned")
+	if (Caffe::bn_state() == "learned")
 	{
 		Dtype factor;
 		if (Caffe::number_collect_sample == -1)
@@ -241,7 +236,6 @@ void ParallelBatchNormLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bott
 	}
 
 		
-	CUDA_SYNCHRONIZE;
 	for(int i=0;i<NGPUS;i++)
 	{ 
 		CUDA_CHECK(cudaSetDevice(Caffe::GPUs[i]));	
@@ -257,29 +251,25 @@ void ParallelBatchNormLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bott
 			top[i]->mutable_gpu_data()
 		);
 	}
-	CUDA_POST_KERNEL_CHECK;			
+		
 	
-
 	if (Caffe::number_collect_sample != -1)
 	{
-		CUDA_SYNCHRONIZE;
 		for(int i=0;i<NGPUS;i++)
 		{ 
 			CUDA_CHECK(cudaSetDevice(Caffe::GPUs[i]));
 			ncclReduce( this->parallel_blobs_[2*NGPUS+i]->gpu_data(),this->parallel_blobs_[2*NGPUS+i]->mutable_gpu_data(),
-					this->parallel_blobs_[2*NGPUS+i]->count(), ncclFloat,ncclSum,0,Caffe::comms(i),Caffe::stream(i));
+					this->parallel_blobs_[2*NGPUS+i]->count(), ncclFloat,ncclSum,0,Caffe::comms(i),NULL);
 		}
-		CUDA_SYNCHRONIZE;
 		for(int i=0;i<NGPUS;i++)
 		{ 
 			CUDA_CHECK(cudaSetDevice(Caffe::GPUs[i]));
 			ncclReduce( this->parallel_blobs_[3*NGPUS+i]->gpu_data(),this->parallel_blobs_[3*NGPUS+i]->mutable_gpu_data(),
-					this->parallel_blobs_[3*NGPUS+i]->count(), ncclFloat,ncclSum,0,Caffe::comms(i),Caffe::stream(i));
+					this->parallel_blobs_[3*NGPUS+i]->count(), ncclFloat,ncclSum,0,Caffe::comms(i),NULL);
 		}
-		CUDA_SYNCHRONIZE;
+		CUDA_CHECK(cudaSetDevice(Caffe::GPUs[0]));
 		caffe_gpu_scal(this->blobs_[2]->count(),Dtype(1)/Dtype(NGPUS),this->blobs_[2]->mutable_gpu_data());
 		caffe_gpu_scal(this->blobs_[3]->count(),Dtype(1)/Dtype(NGPUS),this->blobs_[3]->mutable_gpu_data());	
-		CUDA_SYNCHRONIZE;
 	}			
 }
 
@@ -292,7 +282,6 @@ void ParallelBatchNormLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top
 	int width = bottom[0]->width(); 
 	
 	// compute local scale and bias diff
-	CUDA_SYNCHRONIZE;
 	for(int i=0;i<NGPUS;i++)
 	{ 
 		CUDA_CHECK(cudaSetDevice(Caffe::GPUs[i]));	
@@ -307,12 +296,10 @@ void ParallelBatchNormLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top
 			parallel_var_buffer_[i]->mutable_gpu_diff() // temp use for local bias diff
 		);
 	}
-	CUDA_POST_KERNEL_CHECK;
 	// sync scale and bias diff
 	REDUCE_DIFF(parallel_mean_buffer_)
 	REDUCE_DIFF(parallel_var_buffer_);
 	// add to param blobs diff
-	CUDA_SYNCHRONIZE;
 	for(int i=0;i<NGPUS;i++)
 	{
 		CUDA_CHECK(cudaSetDevice(Caffe::GPUs[i]));	
@@ -323,7 +310,6 @@ void ParallelBatchNormLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top
 			             parallel_var_buffer_[i]->gpu_diff(),
 			             this->parallel_blobs_[1*NGPUS+i]->mutable_gpu_diff());         	             
 	}	               
-	CUDA_SYNCHRONIZE;
 	// compute bottom diff
 	for(int i=0;i<NGPUS;i++)
 	{
@@ -341,8 +327,7 @@ void ParallelBatchNormLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top
 			parallel_mean_buffer_[i]->gpu_diff(),
 			parallel_var_buffer_[i]->gpu_diff(),
 			bottom[i]->gpu_data(),
-			bottom[i]->mutable_gpu_diff()
-		);
+			bottom[i]->mutable_gpu_diff());
 	}
 }
 template <typename Dtype>

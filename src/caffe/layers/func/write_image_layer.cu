@@ -8,7 +8,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/highgui/highgui_c.h>
-#define IMAGE_NUM 4
+#define IMAGE_NUM 2
 namespace caffe {
 
 

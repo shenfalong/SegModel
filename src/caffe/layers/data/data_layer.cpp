@@ -35,6 +35,13 @@ void DataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom, const 
   db_.reset(new db::DB());
   db_->Open(this->layer_param_.data_param().source(0), db::READ);
   cursor_.reset(db_->NewCursor());
+	//random skip some samples for multi-GPU data reading
+	for(int i_skip=0;i_skip<caffe_rng_rand()%100000;i_skip++)
+	{
+		cursor_->Next();
+		if (!cursor_->valid())
+		  cursor_->SeekToFirst();
+	}
 
   cv_img.resize(batch_size);
   datum = new Datum[batch_size];
@@ -67,8 +74,8 @@ void DataLayer<Dtype>::InternalThreadEntry(int gpu_id)
 	const bool random_scale= this->layer_param_.transform_param().random_scale();
 	
 	
-	//for (int i=0;i<this->prefetch_label_.size();i++)
-	//	caffe_set(this->prefetch_label_[i]->count(),Dtype(0),this->prefetch_label_[i]->mutable_cpu_data());
+	
+	//caffe_gpu_set(this->prefetch_label_.count(),Dtype(0),this->prefetch_label_.mutable_gpu_data());
   //******************* load from disk **********************
   cv_img.clear();
   for ( int item_id = 0; item_id < batch_size; ++item_id )
@@ -150,6 +157,8 @@ void DataLayer<Dtype>::InternalThreadEntry(int gpu_id)
     	this->data_transformer_->Transformsimple(cv_img[item_id], &(this->transformed_data_));
     this->prefetch_label_.mutable_cpu_data()[item_id] = datum[item_id].label();
   }
+  
+
 }
 
 template <typename Dtype>

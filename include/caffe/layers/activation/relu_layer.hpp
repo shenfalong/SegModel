@@ -31,7 +31,7 @@ class ReLULayer : public Layer<Dtype>
   
   Dtype negative_slope;
 
- 
+ 	int gpu_id_;
   
   Blob<bool> flag;
 };

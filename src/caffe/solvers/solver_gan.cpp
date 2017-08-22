@@ -76,16 +76,11 @@ void SolverGAN<Dtype>::Solve(const char* all_state_file)
   Dtype cur_g_loss = 0;
   while (this->iter_ < param_.max_iter())
   {
-  	CUDA_SYNCHRONIZE;
     g_net_->ClearParamDiffs();
     d_net_->ClearParamDiffs();    
 //-----------------------------------------------
-		int d_iter = 0;
-   // do 
-		//{
-		for (int d_iter = 0;d_iter < 5;d_iter ++)
+		for (int d_iter = 0;d_iter < 1;d_iter ++)
 		{	
-			//d_iter ++;
 			Caffe::set_gan_type("train_dnet");			
 			g_net_->BcastData();
 			Caffe::set_reuse(true);
@@ -94,6 +89,7 @@ void SolverGAN<Dtype>::Solve(const char* all_state_file)
 			for (int ig = 0;ig < g_net_->output_blobs().size(); ig++)
 			{
 				CUDA_CHECK(cudaSetDevice(Caffe::GPUs[ig%NGPUS]));
+				d_net_->input_blobs()[ig]->ReshapeLike(*g_net_->output_blobs()[ig]);
 				caffe_copy(g_net_->output_blobs()[ig]->count(),g_net_->output_blobs()[ig]->gpu_data(),d_net_->input_blobs()[ig]->mutable_gpu_data());
 			}
 			CUDA_CHECK(cudaSetDevice(Caffe::GPUs[0]));
@@ -101,13 +97,8 @@ void SolverGAN<Dtype>::Solve(const char* all_state_file)
 			d_net_->BcastData();
 			Caffe::set_reuse(false);
 			cur_d_loss = d_net_->Forward();	
-			Caffe::set_reuse(false);
+			Caffe::set_reuse(true);
 			d_net_->Backward();
-			Caffe::set_second_pass(true);
-			d_net_->SecForward();
-			d_net_->Backward();
-			Caffe::set_second_pass(false);
-
 			d_net_->ReduceDiff();
 			
 
@@ -116,53 +107,47 @@ void SolverGAN<Dtype>::Solve(const char* all_state_file)
 
 			d_loss.push_back(cur_d_loss);
 		}
-	//	} while(cur_g_loss - cur_d_loss < 0.03 && d_iter < 2);
 //----------------------------------------------- 
-		int g_iter = 0;
-    //do 
-		//{
-			g_iter ++;
-			Caffe::set_gan_type("train_gnet");		
-			//-----unecessary-------
-			Caffe::set_reuse(false);
-			g_net_->Forward();
+		Caffe::set_gan_type("train_gnet");		
+		//-----unecessary-------
+		Caffe::set_reuse(false);
+		g_net_->Forward();
 
-			for (int ig = 0;ig < g_net_->output_blobs().size(); ig++)
-			{	
-				CUDA_CHECK(cudaSetDevice(Caffe::GPUs[ig%NGPUS]));
-				caffe_copy(g_net_->output_blobs()[ig]->count(),g_net_->output_blobs()[ig]->gpu_data(),d_net_->input_blobs()[ig]->mutable_gpu_data());
-			}
-			CUDA_CHECK(cudaSetDevice(Caffe::GPUs[0]));
+		for (int ig = 0;ig < g_net_->output_blobs().size(); ig++)
+		{	
+			CUDA_CHECK(cudaSetDevice(Caffe::GPUs[ig%NGPUS]));
+			d_net_->input_blobs()[ig]->ReshapeLike(*g_net_->output_blobs()[ig]);
+			caffe_copy(g_net_->output_blobs()[ig]->count(),g_net_->output_blobs()[ig]->gpu_data(),d_net_->input_blobs()[ig]->mutable_gpu_data());
+		}
+		CUDA_CHECK(cudaSetDevice(Caffe::GPUs[0]));
 
+
+		d_net_->BcastData();
+		Caffe::set_reuse(false);
+		cur_g_loss = d_net_->Forward();
 	
-			d_net_->BcastData();
-			Caffe::set_reuse(false);
-			cur_g_loss = d_net_->Forward();
-		
-			Caffe::set_reuse(true);
-			d_net_->Backward();
-			//-----unecessary-------
+		Caffe::set_reuse(true);
+		d_net_->Backward();
+		//-----unecessary-------
 
-			for (int ig = 0;ig < g_net_->output_blobs().size(); ig++)
-			{
-				CUDA_CHECK(cudaSetDevice(Caffe::GPUs[ig%NGPUS]));
-				caffe_copy(g_net_->output_blobs()[ig]->count(),d_net_->input_blobs()[ig]->gpu_diff(),g_net_->output_blobs()[ig]->mutable_gpu_diff());
-			}
-			CUDA_CHECK(cudaSetDevice(Caffe::GPUs[0]));
-		
-			Caffe::set_reuse(true);
-			g_net_->Backward();
-			g_net_->ReduceDiff();
+		for (int ig = 0;ig < g_net_->output_blobs().size(); ig++)
+		{
+			CUDA_CHECK(cudaSetDevice(Caffe::GPUs[ig%NGPUS]));
+			caffe_copy(g_net_->output_blobs()[ig]->count(),d_net_->input_blobs()[ig]->gpu_diff(),g_net_->output_blobs()[ig]->mutable_gpu_diff());
+		}
+		CUDA_CHECK(cudaSetDevice(Caffe::GPUs[0]));
+	
+		Caffe::set_reuse(true);
+		g_net_->Backward();
+		g_net_->ReduceDiff();
 
-			g_net_->Update(this->iter_, param_.max_iter(), false);
-			g_net_->ClearParamDiffs();   
-			d_net_->ClearParamDiffs();   
-		
+		g_net_->Update(this->iter_, param_.max_iter(), false);
+		g_net_->ClearParamDiffs();   
+		d_net_->ClearParamDiffs();   
+	
 
-			g_loss.push_back(cur_g_loss);
-		//} while(cur_g_loss - cur_d_loss > 0.03 && g_iter < 2);
-//-----------------------------------------------			
-    ++this->iter_;
+		g_loss.push_back(cur_g_loss);	
+    this->iter_++;
     
     if (this->iter_ % param_.display() == 0)
     {
@@ -180,10 +165,7 @@ void SolverGAN<Dtype>::Solve(const char* all_state_file)
   	Caffe::number_collect_sample = 0;
   	for (int i = 0; i < param_.accumulate_max_iter(); ++i)
 		{	
-			Caffe::set_reuse(true);
 			g_net_->Forward();
-			Caffe::set_reuse(true);
-			d_net_->Forward();
 			Caffe::number_collect_sample ++;
 		}	
 		Caffe::number_collect_sample = -1;

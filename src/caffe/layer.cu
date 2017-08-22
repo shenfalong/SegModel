@@ -3,13 +3,14 @@
 #include<cfloat>
 namespace caffe {
 template <typename Dtype>
-static __global__ void scale_kernel(int count, int image_dim, Dtype sec_loss_weight, const Dtype *in, const Dtype *coef, Dtype *out)
+static __global__ void scale_kernel(int count, int image_dim, Dtype sec_loss_weight, Dtype norm_value, 
+																			const Dtype *in, const Dtype *coef, Dtype *out)
 {
 
 	CUDA_KERNEL_LOOP(i, count)
 	{
 		int n = i / image_dim;
-		out[i] = 2 * sec_loss_weight  *(coef[n]-1)/ coef[n] * in[i];	
+		out[i] = 2 * sec_loss_weight  *(coef[n]-norm_value)/ coef[n] * in[i];	
 	} 
 }
 template <typename Dtype>
@@ -33,7 +34,7 @@ static __global__ void compute_sum(int image_dim, const Dtype *in, Dtype *out)
 		out[blockIdx.x] = sqrt(buffer[0]);
 }
 template <typename Dtype>
-void Layer<Dtype>::compute_sec_loss(const vector<Blob<Dtype>*>& top, const Dtype sec_loss_weight)
+void Layer<Dtype>::compute_sec_loss(const vector<Blob<Dtype>*>& top, const Dtype sec_loss_weight, const Dtype norm_value)
 {
 	vector<shared_ptr<Blob<Dtype> > > sum_;
 	sum_.resize(top.size());
@@ -57,7 +58,8 @@ void Layer<Dtype>::compute_sec_loss(const vector<Blob<Dtype>*>& top, const Dtype
 			LOG(INFO)<<"sum = "<<sum/Dtype(num);
 		}
 		scale_kernel<Dtype><<<CAFFE_GET_BLOCKS(top[i]->count()), CAFFE_CUDA_NUM_THREADS>>>
-		(top[i]->count(), channels*height*width, sec_loss_weight, top[i]->gpu_diff(), sum_[i]->gpu_data(), top[i]->mutable_gpu_sec_diff());	
+		(top[i]->count(), channels*height*width, sec_loss_weight, norm_value,
+		top[i]->gpu_diff(), sum_[i]->gpu_data(), top[i]->mutable_gpu_sec_diff());	
 		
 		caffe_gpu_scal(top[i]->count(),Dtype(1)/Dtype(num),top[i]->mutable_gpu_sec_diff());
 	}
@@ -74,6 +76,59 @@ void Layer<Dtype>::ToProto(LayerParameter* param, bool write_diff)
     blobs_[i]->ToProto(param->add_blobs(), write_diff);
   
 }
+
+template <typename Dtype>
+inline Dtype Layer<Dtype>::Forward(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top)
+{
+	//LOG(INFO)<<"-----------processing "<<this->layer_param_.type()<<", top.size() = "<<top.size();
+
+	Forward_gpu(bottom, top);
+
+	Dtype loss_weight = layer_param_.include().loss_weight();
+	
+	Dtype loss = 0;
+	if (loss_weight > 0)
+	{
+		CHECK_EQ(Caffe::GPUs.size(),top.size());
+		for (int i=0;i<top.size();i++)
+			loss += top[i]->cpu_data()[0] * loss_weight / Dtype(top.size());
+	}
+
+	return loss;
+};
+
+
+template <typename Dtype>
+inline void Layer<Dtype>::Backward(const vector<Blob<Dtype>*>& top, const vector<Blob<Dtype>*>& bottom) 
+{
+	Dtype loss_weight = layer_param_.include().loss_weight();
+	if (loss_weight > 0)
+	{
+		CHECK_EQ(Caffe::GPUs.size(),top.size());	
+		for (int i=0;i<top.size();i++)
+			top[i]->mutable_cpu_diff()[0] = loss_weight / Dtype(top.size());
+	}
+	
+  Backward_gpu(top, bottom);	
+};
+
+template <typename Dtype>
+inline void Layer<Dtype>::SecForward(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top)
+{
+	//LOG(INFO)<<"-----------processing "<<this->layer_param_.type()<<", top.size() = "<<top.size();
+	Dtype sec_loss_weight = layer_param_.include().sec_loss_weight();
+	Dtype norm_value = layer_param_.include().norm_value();
+	
+	if (sec_loss_weight > 0 && Caffe::second_pass())
+	{
+		CHECK_EQ(Caffe::GPUs.size(),top.size());	
+		compute_sec_loss(top,sec_loss_weight / Dtype(top.size()), norm_value);
+	}
+	else
+	{
+		SecForward_gpu(bottom, top);
+	}
+};
 
 INSTANTIATE_CLASS(Layer);
 }

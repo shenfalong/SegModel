@@ -11,6 +11,8 @@
 #include "caffe/layer.hpp"
 #include "caffe/common.hpp"
 #include "caffe/proto/caffe.pb.h"
+#include "boost/scoped_ptr.hpp"
+#include <boost/thread.hpp>
 
 using std::map;
 using std::vector;
@@ -47,6 +49,7 @@ class Net
 	
 	void BcastData();
 	void ReduceDiff();
+	void ScaleDiff(const Dtype scalar);
 	 
   inline const vector<Blob<Dtype>*>& output_blobs() const { return output_blobs_; }
   inline const vector<Blob<Dtype>*>& input_blobs() const { return input_blobs_; }
@@ -97,6 +100,8 @@ class Net
 	int adam_iter_;
 	Dtype  momentum_power_;
 	Dtype momentum2_power_;
+	
+	shared_ptr<boost::thread> thread_;
 	
   DISABLE_COPY_AND_ASSIGN(Net);
 };

@@ -1440,6 +1440,13 @@ class LayerProp : public ::google::protobuf::Message {
   inline float sec_loss_weight() const;
   inline void set_sec_loss_weight(float value);
 
+  // optional float norm_value = 5 [default = 1];
+  inline bool has_norm_value() const;
+  inline void clear_norm_value();
+  static const int kNormValueFieldNumber = 5;
+  inline float norm_value() const;
+  inline void set_norm_value(float value);
+
   // @@protoc_insertion_point(class_scope:caffe.LayerProp)
  private:
   inline void set_has_loss_weight();
@@ -1448,15 +1455,18 @@ class LayerProp : public ::google::protobuf::Message {
   inline void clear_has_need_backward();
   inline void set_has_sec_loss_weight();
   inline void clear_has_sec_loss_weight();
+  inline void set_has_norm_value();
+  inline void clear_has_norm_value();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   float loss_weight_;
   bool need_backward_;
   float sec_loss_weight_;
+  float norm_value_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
 
   friend void  protobuf_AddDesc_src_2fcaffe_2fproto_2fcaffe_2eproto();
   friend void protobuf_AssignDesc_src_2fcaffe_2fproto_2fcaffe_2eproto();
@@ -6483,6 +6493,28 @@ inline float LayerProp::sec_loss_weight() const {
 inline void LayerProp::set_sec_loss_weight(float value) {
   set_has_sec_loss_weight();
   sec_loss_weight_ = value;
+}
+
+// optional float norm_value = 5 [default = 1];
+inline bool LayerProp::has_norm_value() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void LayerProp::set_has_norm_value() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void LayerProp::clear_has_norm_value() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void LayerProp::clear_norm_value() {
+  norm_value_ = 1;
+  clear_has_norm_value();
+}
+inline float LayerProp::norm_value() const {
+  return norm_value_;
+}
+inline void LayerProp::set_norm_value(float value) {
+  set_has_norm_value();
+  norm_value_ = value;
 }
 
 // -------------------------------------------------------------------

@@ -194,8 +194,7 @@ void PoolingLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom, const 
 		}
 		else
 			LOG(FATAL)<<"unsupported";	
-	}	
-	
+	}		
 }
 
 template <typename Dtype>

@@ -77,7 +77,7 @@ void GradientChecker<Dtype>::CheckGradientSingle(Layer<Dtype>* layer, const vect
   for (int i = 0; i < layer->blobs().size(); ++i) 
   {
     caffe_set(layer->blobs()[i]->count(), static_cast<Dtype>(0), layer->blobs()[i]->mutable_cpu_diff());   
-    //if(i == -1)  
+    if(i == -1)  
     blobs_to_check.push_back(layer->blobs()[i].get());
   }
   if (check_bottom == -1) 

@@ -102,14 +102,12 @@ void BeGdLossLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom, const
 		(num/2*channels*height*width,bottom[0]->gpu_data(),bottom[1]->gpu_data(),loss_g_.mutable_gpu_data());	
 	
 		caffe_gpu_asum(loss_g_.count(),loss_g_.gpu_data(),&sum_g);
-
 		top[0]->mutable_cpu_data()[0] = sum_g / (num/2*channels*height*width);
 	
 		
-		this->blobs_[0]->mutable_cpu_data()[0] = Dtype(0.05);
+		this->blobs_[0]->mutable_cpu_data()[0] = 0.08;
 		//this->blobs_[0]->mutable_cpu_data()[0] = this->blobs_[0]->cpu_data()[0] + 0.001*(gamma*sum_d - sum_g) / Dtype(num/2*channels*height*width);
-		//if(Solver<Dtype>::iter() % 1000 == 0)
-		//	this->blobs_[0]->mutable_cpu_data()[0] = this->blobs_[0]->cpu_data()[0] - 0.2 * (this->blobs_[0]->mutable_cpu_data()[0] - 0.1);
+
 		//LOG(INFO)<<"delta = "<<(gamma*sum_d - sum_g) / Dtype(num/2*channels*height*width);
 		//if (this->blobs_[0]->cpu_data()[0] < 0)
 		//	this->blobs_[0]->mutable_cpu_data()[0] = 0;
