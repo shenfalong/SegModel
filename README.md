@@ -34,6 +34,9 @@ Matlab code. Please execute the scripts in Matlab folder.
     [model 0(182M), on train set](http://pan.baidu.com/s/1bp6KGY7)</br>
     [model 1(182M), on trainval set](http://pan.baidu.com/s/1jIrDzb4)</br>
     [model 2(182M), on trainvalextra set](http://pan.baidu.com/s/1pLgDU4b)</br>
+    
+Put these models into <font color=red>matlab/caffemodel/<font> and modify the model name in <font color=red>matcaffe_fcn.m<font>.
+Ensemble the three models should reach mIoU 79.2% on the test set of Cityscapes.
 
 Datasets
 ---- 
