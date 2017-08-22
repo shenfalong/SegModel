@@ -31,9 +31,9 @@ Scripts
 Matlab code. Please execute the scripts in Matlab folder.
 
 * Cityscapes pretrained models</br>
-    [model 0(182M)](http://pan.baidu.com/s/1bp6KGY7)</br>
-    [model 1(182M)](http://pan.baidu.com/s/1pLgDU4b)</br>
-    [model 2(182M)](http://pan.baidu.com/s/1jIrDzb4)</br>
+    [model 0(182M),on train set](http://pan.baidu.com/s/1bp6KGY7)</br>
+    [model 1(182M), on trainvalextra set](http://pan.baidu.com/s/1pLgDU4b)</br>
+    [model 2(182M), on trainval set](http://pan.baidu.com/s/1jIrDzb4)</br>
 
 
 Datasets
