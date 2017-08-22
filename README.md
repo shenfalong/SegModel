@@ -28,11 +28,13 @@ including training code and test code.
 
 Inference
 ----
-Matlab code.
+Matlab code. Please excute the scripts in Matlab folder.
 
 * Cityscapes pretrained models
     [model 0](http://host.robots.ox.ac.uk/pascal/VOC/)
+    
     [model 1](http://host.robots.ox.ac.uk/pascal/VOC/)
+    
     [model 2](http://host.robots.ox.ac.uk/pascal/VOC/)    
 
 Training (Script comming soon.)
